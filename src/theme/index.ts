@@ -75,16 +75,13 @@ export const getTheme = (mode: "light" | "dark") => {
         MuiCard: {
           styleOverrides: {
             root: {
-              borderRadius: 12,
               boxShadow: "0 4px 12px 0 rgba(0,0,0,0.05)",
             },
           },
         },
         MuiPaper: {
           styleOverrides: {
-            root: {
-              borderRadius: 12,
-            },
+            root: {},
           },
         },
       },
