@@ -1,16 +1,21 @@
 import { useState } from 'react';
-import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Box, Avatar } from '@mui/material';
-import { Login as LoginIcon, PersonAdd as RegisterIcon, Brightness4 as DarkIcon, Brightness7 as LightIcon } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Box, Avatar, useMediaQuery, useTheme as useMuiTheme } from '@mui/material';
+import { Brightness4 as DarkIcon, Brightness7 as LightIcon, Login as LoginIcon, Person as PersonIcon } from '@mui/icons-material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import AuthModal from '../auth/AuthModal';
 
 function Header() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, openLoginDialog, closeLoginDialog, isLoginDialogOpen } = useAuth();
   const { mode, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const muiTheme = useMuiTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('sm'));
+  
+  const firstName = user?.name ? user.name.split(' ')[0] : '';
 
   const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -27,87 +32,104 @@ function Header() {
   };
 
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
-          Top 5 Tião Carreiro & Pardinho
-        </Typography>
+    <>
+      <AppBar position="static">
+        <Toolbar>
+          <Typography 
+            variant={isMobile ? "subtitle1" : "h6"} 
+            component={Link} 
+            to="/" 
+            sx={{ 
+              flexGrow: 1, 
+              textDecoration: 'none', 
+              color: 'inherit',
+              fontWeight: 'bold',
+              fontSize: isMobile ? '1rem' : '1.25rem'
+            }}
+          >
+            Clube do Tião
+          </Typography>
 
-        <IconButton
-          onClick={toggleTheme}
-          color="inherit"
-          aria-label="toggle theme"
-          sx={{ mr: 1 }}
-        >
-          {mode === 'dark' ? <LightIcon /> : <DarkIcon />}
-        </IconButton>
+          <IconButton
+            onClick={toggleTheme}
+            color="inherit"
+            aria-label="toggle theme"
+            sx={{ mr: 1 }}
+          >
+            {mode === 'dark' ? <LightIcon /> : <DarkIcon />}
+          </IconButton>
 
-        {isAuthenticated ? (
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Button color="inherit" component={Link} to="/suggestions">
-              Minhas Sugestões
-            </Button>
-            
-            <IconButton
-              onClick={handleMenu}
-              color="inherit"
-              size="large"
-              aria-label="account of current user"
-              aria-controls="menu-appbar"
-              aria-haspopup="true"
-              sx={{ ml: 1 }}
-            >
-              <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
-                {user?.name.charAt(0).toUpperCase()}
-              </Avatar>
-            </IconButton>
-            
-            <Menu
-              id="menu-appbar"
-              anchorEl={anchorEl}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'right',
-              }}
-              keepMounted
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'right',
-              }}
-              open={open}
-              onClose={handleClose}
-            >
-              {user?.is_admin && (
-                <MenuItem onClick={() => { handleClose(); navigate('/admin'); }}>
-                  Painel Admin
-                </MenuItem>
+          {isAuthenticated ? (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              {!isMobile && (
+                <Button color="inherit" component={Link} to="/suggestions">
+                  Minhas Sugestões
+                </Button>
               )}
-              <MenuItem onClick={handleLogout}>Sair</MenuItem>
-            </Menu>
-          </Box>
-        ) : (
-          <Box>
+              
+              <IconButton
+                onClick={handleMenu}
+                color="inherit"
+                size="large"
+                aria-label="account of current user"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                sx={{ ml: 1 }}
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: '#E0A800' }}>
+                  <PersonIcon />
+                </Avatar>
+              </IconButton>
+              
+              <Menu
+                id="menu-appbar"
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                keepMounted
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                open={open}
+                onClose={handleClose}
+              >
+                {isMobile && (
+                  <>
+                    <MenuItem disabled sx={{ fontWeight: 'bold', opacity: 1 }}>
+                      Olá, {firstName}
+                    </MenuItem>
+                    <MenuItem component={Link} to="/suggestions" onClick={handleClose}>
+                      Minhas Sugestões
+                    </MenuItem>
+                  </>
+                )}
+                {user?.is_admin && (
+                  <MenuItem onClick={() => { handleClose(); navigate('/admin'); }}>
+                    Painel Admin
+                  </MenuItem>
+                )}
+                <MenuItem onClick={handleLogout}>Sair</MenuItem>
+              </Menu>
+            </Box>
+          ) : (
             <Button 
-              color="inherit" 
-              component={Link} 
-              to="/login"
+              color="primary" 
+              variant="contained"
+              onClick={openLoginDialog}
               startIcon={<LoginIcon />}
-              sx={{ mr: 1 }}
+              size={isMobile ? "small" : "medium"}
             >
-              Login
+              {isMobile ? "Acessar" : "Acessar Conta"}
             </Button>
-            <Button 
-              color="inherit" 
-              component={Link} 
-              to="/register"
-              startIcon={<RegisterIcon />}
-            >
-              Cadastro
-            </Button>
-          </Box>
-        )}
-      </Toolbar>
-    </AppBar>
+          )}
+        </Toolbar>
+      </AppBar>
+
+      <AuthModal open={isLoginDialogOpen} onClose={closeLoginDialog} />
+    </>
   );
 }
 

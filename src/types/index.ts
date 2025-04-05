@@ -1,10 +1,12 @@
 export interface Music {
   id: number
   title: string
-  link: string
-  plays: number
+  youtube_id: string
+  views: number
+  views_formatted: string
+  thumbnail: string
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 export interface Suggestion {

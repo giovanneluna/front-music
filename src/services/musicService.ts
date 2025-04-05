@@ -40,3 +40,52 @@ export const musicService = {
     await api.delete(`/musics/${id}`)
   },
 }
+
+export const getMusics = async (
+  page = 1,
+  perPage = 10,
+  sortDirection = "desc",
+  excludeIds: number[] = []
+) => {
+  try {
+    const response = await api.get<{
+      status: string
+      data: Music[]
+      meta: any
+    }>(
+      `/musics?page=${page}&per_page=${perPage}&sort_by=views&sort_direction=${sortDirection}&exclude_ids=${excludeIds.join(
+        ","
+      )}`
+    )
+    return response.data
+  } catch (error) {
+    console.error("Error fetching musics:", error)
+    throw error
+  }
+}
+
+export const getTopMusics = async (limit = 5) => {
+  try {
+    const response = await api.get<{ status: string; data: Music[] }>(
+      `/musics?per_page=${limit}&sort_by=views&sort_direction=desc`
+    )
+    return response.data
+  } catch (error) {
+    console.error("Error fetching top musics:", error)
+    throw error
+  }
+}
+
+export const suggestMusic = async (data: {
+  title: string
+  youtube_url: string
+  user_id: number
+}) => {
+  try {
+    const response = await api.post("/suggestions", data)
+    return response.data
+  } catch (error) {
+    console.error("Error suggesting music:", error)
+    throw error
+  }
+}

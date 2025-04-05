@@ -48,7 +48,7 @@ function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
         borderColor: 'divider',
         textAlign: 'center'
       }}>
-        © {new Date().getFullYear()} Top 5 Tião Carreiro & Pardinho - Versão 2.0
+        © {new Date().getFullYear()} Clube do Tião - Versão 2.0
       </Box>
     </Box>
   );

@@ -9,6 +9,9 @@ interface AuthContextType {
   register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  openLoginDialog: () => void;
+  closeLoginDialog: () => void;
+  isLoginDialogOpen: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(authService.isAuthenticated());
+  const [isLoginDialogOpen, setIsLoginDialogOpen] = useState(false);
 
   useEffect(() => {
     async function loadUser() {
@@ -69,8 +73,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const openLoginDialog = () => {
+    setIsLoginDialogOpen(true);
+  };
+
+  const closeLoginDialog = () => {
+    setIsLoginDialogOpen(false);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAuthenticated }}>
+    <AuthContext.Provider 
+      value={{ 
+        user, 
+        loading, 
+        login, 
+        register, 
+        logout, 
+        isAuthenticated, 
+        openLoginDialog, 
+        closeLoginDialog, 
+        isLoginDialogOpen 
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
