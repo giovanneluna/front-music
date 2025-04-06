@@ -4,14 +4,22 @@ import { AuthResponse, LoginCredentials, RegisterData, User } from "../types"
 export const authService = {
   login: async (credentials: LoginCredentials) => {
     const response = await api.post<AuthResponse>("/auth/login", credentials)
-    localStorage.setItem("token", response.data.token)
-    return response.data
+    if (response.data && response.data.token) {
+      localStorage.setItem("token", response.data.token)
+      return { user: response.data.data, token: response.data.token }
+    } else {
+      throw new Error("Resposta de login inválida")
+    }
   },
 
   register: async (data: RegisterData) => {
     const response = await api.post<AuthResponse>("/auth/register", data)
-    localStorage.setItem("token", response.data.token)
-    return response.data
+    if (response.data && response.data.token) {
+      localStorage.setItem("token", response.data.token)
+      return { user: response.data.data, token: response.data.token }
+    } else {
+      throw new Error("Resposta de registro inválida")
+    }
   },
 
   logout: async () => {
@@ -21,9 +29,17 @@ export const authService = {
 
   getCurrentUser: async () => {
     try {
-      const response = await api.get<User>("/auth/user")
-      return response.data
+      const response = await api.get<{ status: string; data: User }>(
+        "/auth/user"
+      )
+
+      if (response.data && response.data.status === "success") {
+        return response.data.data
+      } else {
+        throw new Error("Falha ao obter dados do usuário")
+      }
     } catch (error) {
+      console.error("Erro ao buscar usuário atual:", error)
       localStorage.removeItem("token")
       throw error
     }

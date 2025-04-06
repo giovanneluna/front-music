@@ -25,15 +25,21 @@ interface AuthModalProps {
 }
 
 const loginSchema = z.object({
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres')
+  email: z.string().email('Email inválido').nonempty('Email é obrigatório'),
+  password: z.string().min(8, 'Senha deve ter pelo menos 8 caracteres').nonempty('Senha é obrigatória')
 });
 
 const registerSchema = z.object({
-  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres'),
-  email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
-  password_confirmation: z.string()
+  name: z.string().min(3, 'Nome deve ter pelo menos 3 caracteres').nonempty('Nome é obrigatório'),
+  email: z.string().email('Email inválido').nonempty('Email é obrigatório'),
+  password: z.string()
+    .min(8, 'Senha deve ter pelo menos 8 caracteres')
+    .regex(/[A-Z]/, 'Senha deve conter pelo menos uma letra maiúscula')
+    .regex(/[a-z]/, 'Senha deve conter pelo menos uma letra minúscula')
+    .regex(/[0-9]/, 'Senha deve conter pelo menos um número')
+    .regex(/[@$!%*#?&]/, 'Senha deve conter pelo menos um caractere especial (@$!%*#?&)')
+    .nonempty('Senha é obrigatória'),
+  password_confirmation: z.string().nonempty('Confirmação de senha é obrigatória')
 }).refine(data => data.password === data.password_confirmation, {
   message: 'As senhas não conferem',
   path: ['password_confirmation']

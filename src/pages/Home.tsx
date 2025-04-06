@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Box, Typography, Container, CircularProgress, Paper, useTheme } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import MusicList from '../components/ui/MusicList';
 import SuggestionForm from '../components/ui/SuggestionForm';
 import { getTopMusics } from '../services/musicService';
 import { Music } from '../types';
 
 function Home() {
-  const { isAuthenticated, user, openLoginDialog } = useAuth();
+  const { isAuthenticated, user, loading: authLoading, openLoginDialog } = useAuth();
   const [loading, setLoading] = useState(true);
   const [topMusics, setTopMusics] = useState<Music[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -15,21 +16,37 @@ function Home() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
 
+  const fetchTopMusics = async () => {
+    setLoading(true);
+    try {
+      const response = await getTopMusics(5);
+      setTopMusics(response.data);
+    } catch (err) {
+      console.error('Error fetching top musics:', err);
+      setError('Não foi possível carregar as músicas. Por favor, tente novamente mais tarde.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTopMusics = async () => {
-      setLoading(true);
-      try {
-        const response = await getTopMusics(5);
-        setTopMusics(response.data);
-      } catch (err) {
-        console.error('Error fetching top musics:', err);
-        setError('Não foi possível carregar as músicas. Por favor, tente novamente mais tarde.');
-      } finally {
-        setLoading(false);
+    if (!authLoading) {
+      fetchTopMusics();
+    }
+  }, [authLoading]);
+
+  useEffect(() => {
+    const handleTopMusicsUpdated = (event: CustomEvent) => {
+      if (event.detail && event.detail.musics) {
+        setTopMusics(event.detail.musics);
       }
     };
 
-    fetchTopMusics();
+    window.addEventListener('topMusicsUpdated', handleTopMusicsUpdated as EventListener);
+
+    return () => {
+      window.removeEventListener('topMusicsUpdated', handleTopMusicsUpdated as EventListener);
+    };
   }, []);
 
   const handleSuggestMusic = () => {
@@ -40,11 +57,31 @@ function Home() {
     }
   };
 
-  const handleCancelSuggestion = () => {
+  const handleCloseSuggestionForm = () => {
     setShowSuggestionForm(false);
   };
 
+  const handleMusicAdded = useCallback(() => {
+    setLoading(true);
+    
+    setTimeout(() => {
+      fetchTopMusics().then(() => {
+        console.log("Lista de top músicas atualizada com sucesso");
+      }).catch(err => {
+        console.error("Erro ao atualizar top músicas:", err);
+      });
+    }, 300);
+  }, []);
+
   const profileImageUrl = 'images/tiao-carreiro.jpg';
+
+  if (authLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box 
@@ -116,19 +153,19 @@ function Home() {
               </Typography>
             </Box>
           ) : (
-            <>
-              <MusicList 
-                topMusics={topMusics}
-                onSuggestMusic={handleSuggestMusic}
-              />
-              
-              {showSuggestionForm && (
-                <SuggestionForm onCancel={handleCancelSuggestion} />
-              )}
-            </>
+            <MusicList 
+              topMusics={topMusics}
+              onSuggestMusic={handleSuggestMusic}
+              onMusicAdded={handleMusicAdded}
+            />
           )}
         </Paper>
       </Container>
+      
+      <SuggestionForm 
+        open={showSuggestionForm} 
+        onClose={handleCloseSuggestionForm} 
+      />
     </Box>
   );
 }

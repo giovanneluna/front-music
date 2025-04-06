@@ -106,11 +106,6 @@ function Header() {
                     </MenuItem>
                   </>
                 )}
-                {user?.is_admin && (
-                  <MenuItem onClick={() => { handleClose(); navigate('/admin'); }}>
-                    Painel Admin
-                  </MenuItem>
-                )}
                 <MenuItem onClick={handleLogout}>Sair</MenuItem>
               </Menu>
             </Box>

@@ -9,6 +9,11 @@ const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
+  if (config.headers["X-Skip-Auth"] === "true") {
+    delete config.headers["X-Skip-Auth"]
+    return config
+  }
+
   const token = localStorage.getItem("token")
   if (token) {
     config.headers.Authorization = `Bearer ${token}`

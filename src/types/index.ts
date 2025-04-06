@@ -4,6 +4,8 @@ export interface Music {
   youtube_id: string
   views: number
   views_formatted: string
+  likes?: number
+  likes_formatted?: string
   thumbnail: string
   created_at: string
   updated_at?: string
@@ -28,7 +30,9 @@ export interface User {
 }
 
 export interface AuthResponse {
-  user: User
+  status: string
+  message: string
+  data: User
   token: string
 }
 
