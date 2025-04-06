@@ -7,13 +7,13 @@ import {
   Box, 
   Tabs, 
   Tab, 
-  Typography,
   TextField,
   Button,
   Alert,
-  CircularProgress
+  CircularProgress,
+  InputAdornment
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -85,6 +85,9 @@ function AuthModal({ open, onClose }: AuthModalProps) {
   const [tabValue, setTabValue] = useState(0);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const { login, register: registerUser } = useAuth();
 
   const { control: loginControl, handleSubmit: handleLoginSubmit, formState: { errors: loginErrors, isSubmitting: isLoginSubmitting } } = useForm<LoginFormData>({
@@ -109,6 +112,18 @@ function AuthModal({ open, onClose }: AuthModalProps) {
     setTabValue(newValue);
     setLoginError(null);
     setRegisterError(null);
+  };
+
+  const handleShowLoginPassword = () => {
+    setShowLoginPassword(prev => !prev);
+  };
+
+  const handleShowRegisterPassword = () => {
+    setShowRegisterPassword(prev => !prev);
+  };
+
+  const handleShowRegisterConfirmPassword = () => {
+    setShowRegisterConfirmPassword(prev => !prev);
   };
 
   const onLoginSubmit = async (data: LoginFormData) => {
@@ -140,15 +155,18 @@ function AuthModal({ open, onClose }: AuthModalProps) {
       fullWidth
       maxWidth="sm"
     >
-      <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h5" component="div">
-          Acesse sua conta
-        </Typography>
+      <DialogTitle sx={{ pb: 1, pr: 6 }}>
+        {tabValue === 0 ? 'Entrar' : 'Criar Conta'}
         <IconButton
           aria-label="close"
           onClick={onClose}
+          disabled={isLoginSubmitting || isRegisterSubmitting}
           sx={{
-            color: (theme) => theme.palette.grey[500],
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: theme => theme.palette.error.main,
+            borderRadius: 2
           }}
         >
           <CloseIcon />
@@ -201,7 +219,20 @@ function AuthModal({ open, onClose }: AuthModalProps) {
                   error={!!loginErrors.password}
                   helperText={loginErrors.password?.message}
                   disabled={isLoginSubmitting}
-                  type="password"
+                  type={showLoginPassword ? "text" : "password"}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleShowLoginPassword}
+                          edge="end"
+                        >
+                          {showLoginPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
                 />
               )}
             />
@@ -211,11 +242,11 @@ function AuthModal({ open, onClose }: AuthModalProps) {
               fullWidth
               variant="contained"
               color="primary"
-              size="large"
+              size="medium"
               disabled={isLoginSubmitting}
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 2, mb: 1, py: 1 }}
             >
-              {isLoginSubmitting ? <CircularProgress size={24} /> : 'Entrar'}
+              {isLoginSubmitting ? <CircularProgress size={20} /> : 'Entrar'}
             </Button>
           </Box>
         </TabPanel>
@@ -276,7 +307,20 @@ function AuthModal({ open, onClose }: AuthModalProps) {
                   error={!!registerErrors.password}
                   helperText={registerErrors.password?.message}
                   disabled={isRegisterSubmitting}
-                  type="password"
+                  type={showRegisterPassword ? "text" : "password"}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={handleShowRegisterPassword}
+                          edge="end"
+                        >
+                          {showRegisterPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
                 />
               )}
             />
@@ -294,7 +338,20 @@ function AuthModal({ open, onClose }: AuthModalProps) {
                   error={!!registerErrors.password_confirmation}
                   helperText={registerErrors.password_confirmation?.message}
                   disabled={isRegisterSubmitting}
-                  type="password"
+                  type={showRegisterConfirmPassword ? "text" : "password"}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password confirmation visibility"
+                          onClick={handleShowRegisterConfirmPassword}
+                          edge="end"
+                        >
+                          {showRegisterConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    )
+                  }}
                 />
               )}
             />
@@ -304,11 +361,11 @@ function AuthModal({ open, onClose }: AuthModalProps) {
               fullWidth
               variant="contained"
               color="primary"
-              size="large"
+              size="medium"
               disabled={isRegisterSubmitting}
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 2, mb: 1, py: 1 }}
             >
-              {isRegisterSubmitting ? <CircularProgress size={24} /> : 'Cadastrar'}
+              {isRegisterSubmitting ? <CircularProgress size={20} /> : 'Cadastrar'}
             </Button>
           </Box>
         </TabPanel>

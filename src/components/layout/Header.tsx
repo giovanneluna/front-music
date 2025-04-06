@@ -63,8 +63,14 @@ function Header() {
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               {!isMobile && (
                 <Button color="inherit" component={Link} to="/suggestions">
-                  Minhas Sugestões
+                  {user?.is_admin ? 'Ver Sugestões' : 'Minhas Sugestões'}
                 </Button>
+              )}
+              
+              {!isMobile && (
+                <Typography variant="body1" sx={{ ml: 1, mr: 1 }}>
+                  {firstName}
+                </Typography>
               )}
               
               <IconButton
@@ -74,7 +80,7 @@ function Header() {
                 aria-label="account of current user"
                 aria-controls="menu-appbar"
                 aria-haspopup="true"
-                sx={{ ml: 1 }}
+                sx={{ ml: isMobile ? 1 : 0 }}
               >
                 <Avatar sx={{ width: 32, height: 32, bgcolor: '#E0A800' }}>
                   <PersonIcon />
@@ -102,7 +108,7 @@ function Header() {
                       Olá, {firstName}
                     </MenuItem>
                     <MenuItem component={Link} to="/suggestions" onClick={handleClose}>
-                      Minhas Sugestões
+                      {user?.is_admin ? 'Ver Sugestões' : 'Minhas Sugestões'}
                     </MenuItem>
                   </>
                 )}
@@ -112,10 +118,17 @@ function Header() {
           ) : (
             <Button 
               color="primary" 
-              variant="contained"
+              variant={mode === 'dark' ? "contained" : "outlined"}
               onClick={openLoginDialog}
               startIcon={<LoginIcon />}
               size={isMobile ? "small" : "medium"}
+              sx={{ 
+                bgcolor: mode === 'dark' ? undefined : 'white',
+                color: mode === 'dark' ? undefined : 'primary.main',
+                '&:hover': {
+                  bgcolor: mode === 'dark' ? undefined : 'rgba(255, 255, 255, 0.9)',
+                }
+              }}
             >
               {isMobile ? "Acessar" : "Acessar Conta"}
             </Button>

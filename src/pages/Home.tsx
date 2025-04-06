@@ -71,7 +71,7 @@ function Home() {
     }, 300);
   }, []);
 
-  const profileImageUrl = 'images/tiao-carreiro.jpg';
+  const profileImageUrl = 'images/foto-perfil.jpg';
 
   if (authLoading) {
     return (
@@ -84,25 +84,42 @@ function Home() {
   return (
     <Box 
       sx={{
+        backgroundImage: 'url(/images/background.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'fixed',
         backgroundColor: isDark ? '#121212' : '#f5f5f5',
         color: 'text.primary',
         minHeight: '100vh',
         pt: 2,
-        pb: 8
+        pb: 8,
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+          zIndex: 1
+        }
       }}
     >
-      <Container maxWidth="lg">
-        <Paper 
+      <Box sx={{ position: 'relative', zIndex: 2, width: '100%', px: { xs: 1, sm: 2 } }}>
+        <Box 
           sx={{ 
-            p: { xs: 2, sm: 3 }, 
             mb: 3, 
-            backgroundColor: isDark ? '#181818' : '#fff',
-            borderRadius: 2,
             position: 'relative',
             display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
             alignItems: 'center',
-            gap: 3
+            gap: 3,
+            backgroundColor: isDark ? 'rgba(24, 24, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            p: { xs: 2, sm: 3 },
+            borderRadius: 2,
+            boxShadow: 1
           }}
         >
           <Box 
@@ -127,12 +144,14 @@ function Home() {
               A melhor seleção das músicas da dupla caipira mais famosa do Brasil.
             </Typography>
           </Box>
-        </Paper>
+        </Box>
 
-        <Paper 
+        <Box 
           sx={{ 
-            p: { xs: 2, sm: 3 }, 
-            backgroundColor: isDark ? '#181818' : '#fff',
+            position: 'relative',
+            width: '100%',
+            backgroundColor: isDark ? 'rgba(24, 24, 24, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+            p: { xs: 2, sm: 3 },
             borderRadius: 2,
             boxShadow: 1
           }}
@@ -157,8 +176,8 @@ function Home() {
               onMusicAdded={handleMusicAdded}
             />
           )}
-        </Paper>
-      </Container>
+        </Box>
+      </Box>
       
       <SuggestionForm 
         open={showSuggestionForm} 

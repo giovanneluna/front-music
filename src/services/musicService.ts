@@ -25,7 +25,6 @@ function extractYoutubeId(url: string): string | null {
 
   const simpleIdMatch = url.match(/[a-zA-Z0-9_-]{11}/)
   if (simpleIdMatch && simpleIdMatch[0]) {
-    console.log("Extração de ID usando método alternativo:", simpleIdMatch[0])
     return simpleIdMatch[0]
   }
 

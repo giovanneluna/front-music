@@ -14,9 +14,17 @@ export interface Music {
 export interface Suggestion {
   id: number
   user_id: number
+  user?: {
+    id: number
+    name: string
+    email: string
+  }
   title: string
+  youtube_id: string
   link: string
   status: "pending" | "approved" | "rejected"
+  reason?: string
+  music_id?: number
   created_at: string
   updated_at: string
 }

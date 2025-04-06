@@ -76,8 +76,8 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
     if (!title.trim()) {
       setError('O título da música é obrigatório.');
@@ -150,8 +150,14 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
           borderRadius: 3
         }
       }}
+      disableEnforceFocus
+      disableAutoFocus
+      container={document.body}
+      keepMounted={false}
+      aria-labelledby="suggestion-dialog-title"
+      aria-describedby="suggestion-dialog-description"
     >
-      <DialogTitle>
+      <DialogTitle id="suggestion-dialog-title">
         Sugerir uma música
         <IconButton
           aria-label="close"
@@ -161,7 +167,7 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
             position: 'absolute',
             right: 8,
             top: 8,
-            color: (theme) => theme.palette.grey[500],
+            color: theme => theme.palette.error.main,
             borderRadius: 2
           }}
         >
@@ -169,7 +175,7 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
         </IconButton>
       </DialogTitle>
       
-      <DialogContent>
+      <DialogContent id="suggestion-dialog-description">
         {success ? (
           <Alert 
             severity="success" 
@@ -253,28 +259,25 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
 
       {!success && (
         <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            variant="outlined" 
-            onClick={handleClose}
-            disabled={isProcessing}
-            sx={{ 
-              borderRadius: 10,
-              px: 3
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            variant="contained" 
-            disabled={isProcessing || !title || !youtubeUrl}
-            sx={{ 
-              borderRadius: 10,
-              px: 3
-            }}
-          >
-            {loading ? <CircularProgress size={24} /> : 'Enviar sugestão'}
-          </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button
+              onClick={handleSubmit}
+              type="button"
+              variant="contained"
+              color="primary"
+              disabled={isProcessing || !title || !youtubeUrl}
+              sx={{ 
+                borderRadius: 10,
+                fontWeight: 'bold'
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                'Enviar sugestão'
+              )}
+            </Button>
+          </Box>
         </DialogActions>
       )}
     </Dialog>

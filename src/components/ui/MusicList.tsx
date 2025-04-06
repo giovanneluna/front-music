@@ -6,6 +6,7 @@ import { getMusics, musicService } from '../../services/musicService';
 import { useAuth } from '../../contexts/AuthContext';
 import { MusicFormModal } from './MusicFormModal';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+import AddIcon from '@mui/icons-material/Add';
 
 const MusicCardSkeleton = () => {
   return (
@@ -64,7 +65,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded }: MusicListProps) 
   const [musics, setMusics] = useState<Music[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  const { isAuthenticated, user } = useAuth();
+  const {  user } = useAuth();
   const musicContainerRef = useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMusic, setSelectedMusic] = useState<Music | undefined>(undefined);
@@ -73,7 +74,6 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded }: MusicListProps) 
   const [deleteLoading, setDeleteLoading] = useState(false);
   const cachedPages = useRef<Record<string, {data: Music[], meta: any}>>({});
   const debounceTimerRef = useRef<number | null>(null);
-  const paginationRef = useRef<HTMLDivElement>(null);
 
   const topMusicIds = useMemo(() => topMusics.map(music => music.id), [topMusics]);
 
@@ -245,8 +245,9 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded }: MusicListProps) 
                 fontWeight: 'bold',
                 px: 3,
                 py: 1,
-                borderRadius: 10
+                borderRadius: 4
               }}
+              startIcon={<AddIcon />}
             >
               {user?.is_admin ? "Adicionar Música" : "Sugerir Música"}
             </Button>
@@ -429,7 +430,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded }: MusicListProps) 
       </Box>
       
       {renderPagination}
-      
+
       <MusicFormModal 
         open={modalOpen}
         onClose={handleModalClose}

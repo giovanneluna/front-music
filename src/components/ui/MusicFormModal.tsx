@@ -252,7 +252,7 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
             position: 'absolute',
             right: 8,
             top: 8,
-            color: (theme) => theme.palette.grey[500],
+            color: theme => theme.palette.error.main,
             borderRadius: 2
           }}
         >
@@ -422,14 +422,8 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
         </Box>
       </DialogContent>
 
-      <DialogActions>
-        <Button 
-          onClick={onClose} 
-          disabled={loading}
-          sx={{ borderRadius: 10 }}
-        >
-          Cancelar
-        </Button>
+      <DialogActions sx={{ px: 3, pb: 3 }}>
+       
         <Button 
           onClick={handleSubmit}
           variant="contained" 

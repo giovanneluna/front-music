@@ -1,5 +1,6 @@
 import { FC, memo } from 'react';
-import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, CircularProgress, Typography, Box } from '@mui/material';
+import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, CircularProgress, Typography, Box, IconButton } from '@mui/material';
+import { Close as CloseIcon } from '@mui/icons-material';
 
 interface DeleteConfirmationModalProps {
   open: boolean;
@@ -30,6 +31,20 @@ export const DeleteConfirmationModal: FC<DeleteConfirmationModalProps> = memo(({
     >
       <DialogTitle id="alert-dialog-title">
         Confirmar Exclusão
+        <IconButton
+          aria-label="close"
+          onClick={onCancel}
+          disabled={loading}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: theme => theme.palette.error.main,
+            borderRadius: 2
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
       </DialogTitle>
       <DialogContent>
         <DialogContentText id="alert-dialog-description">
@@ -63,14 +78,7 @@ export const DeleteConfirmationModal: FC<DeleteConfirmationModalProps> = memo(({
         </DialogContentText>
       </DialogContent>
       <DialogActions sx={{ p: 2, pt: 0 }}>
-        <Button 
-          onClick={onCancel} 
-          color="inherit" 
-          disabled={loading}
-          sx={{ fontWeight: 'bold', borderRadius: 10 }}
-        >
-          Cancelar
-        </Button>
+
         <Button 
           onClick={onConfirm} 
           color="error" 
