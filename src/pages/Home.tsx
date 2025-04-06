@@ -1,23 +1,29 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, Container, CircularProgress, Paper, useTheme } from '@mui/material';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Box, Typography, CircularProgress, useTheme } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import MusicList from '../components/ui/MusicList';
 import SuggestionForm from '../components/ui/SuggestionForm';
 import { getTopMusics } from '../services/musicService';
 import { Music } from '../types';
 
 function Home() {
-  const { isAuthenticated, user, loading: authLoading, openLoginDialog } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { isAuthenticated, loading: authLoading, isLoggingOut, openLoginDialog } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [topMusics, setTopMusics] = useState<Music[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showSuggestionForm, setShowSuggestionForm] = useState(false);
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const initialLoadDone = useRef(false);
+  const firstRenderDone = useRef(false);
 
-  const fetchTopMusics = async () => {
-    setLoading(true);
+  const fetchTopMusics = useCallback(async (force = false) => {
+    if (!force && initialLoadDone.current) return;
+    
+    if (!initialLoadDone.current) {
+      setLoading(true);
+    }
+    
     try {
       const response = await getTopMusics(5);
       setTopMusics(response.data);
@@ -26,14 +32,19 @@ function Home() {
       setError('Não foi possível carregar as músicas. Por favor, tente novamente mais tarde.');
     } finally {
       setLoading(false);
+      initialLoadDone.current = true;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && !isLoggingOut) {
       fetchTopMusics();
     }
-  }, [authLoading]);
+  }, [authLoading, fetchTopMusics, isLoggingOut]);
+
+  useEffect(() => {
+    firstRenderDone.current = true;
+  }, []);
 
   useEffect(() => {
     const handleTopMusicsUpdated = (event: CustomEvent) => {
@@ -62,18 +73,63 @@ function Home() {
   };
 
   const handleMusicAdded = useCallback(() => {
-    setLoading(true);
-    
-    setTimeout(() => {
-      fetchTopMusics().then(() => {
-      }).catch(err => {
-      });
-    }, 300);
-  }, []);
+    fetchTopMusics(true);
+  }, [fetchTopMusics]);
 
   const profileImageUrl = 'images/foto-perfil.jpg';
 
-  if (authLoading) {
+  const renderedContent = useMemo(() => {
+    return (
+      <Box sx={{ minHeight: '300px', position: 'relative' }}>
+        {loading && !isLoggingOut && (
+          <Box sx={{ 
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            flexDirection: 'column',
+            gap: 2,
+            backgroundColor: theme => theme.palette.background.paper,
+            zIndex: 1
+          }}>
+            <CircularProgress size={60} color="primary" />
+            <Typography variant="body1">
+              Carregando as músicas...
+            </Typography>
+          </Box>
+        )}
+        
+        {!loading && error ? (
+          <Box sx={{ textAlign: 'center', py: 8 }}>
+            <Typography variant="h6" color="error">
+              {error}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ 
+            position: 'relative', 
+            zIndex: loading && !isLoggingOut ? 0 : 1,
+            opacity: loading && !isLoggingOut ? 0 : 1,
+            transition: 'opacity 0.3s ease-in-out',
+            visibility: loading && !isLoggingOut ? 'hidden' : 'visible'
+          }}>
+            <MusicList 
+              topMusics={topMusics}
+              onSuggestMusic={handleSuggestMusic}
+              onMusicAdded={handleMusicAdded}
+              skipLoading={firstRenderDone.current || isLoggingOut}
+            />
+          </Box>
+        )}
+      </Box>
+    );
+  }, [loading, error, topMusics, handleSuggestMusic, handleMusicAdded, theme, firstRenderDone, isLoggingOut]);
+
+  if (authLoading && !isLoggingOut) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
@@ -156,26 +212,7 @@ function Home() {
             boxShadow: 1
           }}
         >
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px', flexDirection: 'column', gap: 2 }}>
-              <CircularProgress size={60} color="primary" />
-              <Typography variant="body1">
-                Carregando as músicas...
-              </Typography>
-            </Box>
-          ) : error ? (
-            <Box sx={{ textAlign: 'center', py: 8 }}>
-              <Typography variant="h6" color="error">
-                {error}
-              </Typography>
-            </Box>
-          ) : (
-            <MusicList 
-              topMusics={topMusics}
-              onSuggestMusic={handleSuggestMusic}
-              onMusicAdded={handleMusicAdded}
-            />
-          )}
+          {renderedContent}
         </Box>
       </Box>
       

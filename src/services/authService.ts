@@ -3,28 +3,53 @@ import { AuthResponse, LoginCredentials, RegisterData, User } from "../types"
 
 export const authService = {
   login: async (credentials: LoginCredentials) => {
-    const response = await api.post<AuthResponse>("/auth/login", credentials)
-    if (response.data && response.data.token) {
-      localStorage.setItem("token", response.data.token)
-      return { user: response.data.data, token: response.data.token }
-    } else {
-      throw new Error("Resposta de login inválida")
+    try {
+      const response = await api.post<AuthResponse>("/auth/login", credentials)
+      if (response.data && response.data.token) {
+        localStorage.setItem("token", response.data.token)
+        return { user: response.data.data, token: response.data.token }
+      } else {
+        throw new Error("Resposta de login inválida")
+      }
+    } catch (error: any) {
+      if (error.response?.status === 401 || error.response?.status === 422) {
+        throw new Error("Email ou senha incorretos")
+      }
+      throw error
     }
   },
 
   register: async (data: RegisterData) => {
-    const response = await api.post<AuthResponse>("/auth/register", data)
-    if (response.data && response.data.token) {
-      localStorage.setItem("token", response.data.token)
-      return { user: response.data.data, token: response.data.token }
-    } else {
-      throw new Error("Resposta de registro inválida")
+    try {
+      const response = await api.post<AuthResponse>("/auth/register", data)
+      if (response.data && response.data.token) {
+        localStorage.setItem("token", response.data.token)
+        return { user: response.data.data, token: response.data.token }
+      } else {
+        throw new Error("Resposta de registro inválida")
+      }
+    } catch (error: any) {
+      if (error.response?.status === 422) {
+        const errors = error.response.data.errors || {}
+
+        if (errors.email?.includes("taken")) {
+          throw new Error("Este email já está em uso")
+        } else if (errors.password) {
+          throw new Error("A senha não atende aos requisitos")
+        }
+      }
+      throw error
     }
   },
 
   logout: async () => {
-    await api.post("/auth/logout")
-    localStorage.removeItem("token")
+    try {
+      await api.post("/auth/logout")
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error)
+    } finally {
+      localStorage.removeItem("token")
+    }
   },
 
   getCurrentUser: async () => {

@@ -205,10 +205,17 @@ const MusicCard: FC<MusicCardProps> = ({
             mt: 'auto',
             pt: 0.5
           }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: '70px' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 0.5, 
+              minWidth: '70px' 
+            }}>
               <VisibilityIcon fontSize="small" sx={{ 
                 color: theme => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                display: 'block',
+                marginTop: '1px'
               }} />
               <Typography 
                 variant="body2" 
@@ -216,17 +223,28 @@ const MusicCard: FC<MusicCardProps> = ({
                   color: theme => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
                   fontWeight: 500,
                   fontSize: '0.75rem',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
               >
                 {music.views_formatted || (music.views ? `${music.views}` : '0')}
               </Typography>
             </Box>
             
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: '50px', justifyContent: 'flex-end' }}>
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 0.5, 
+              minWidth: '50px', 
+              justifyContent: 'flex-end' 
+            }}>
               <ThumbUpIcon fontSize="small" sx={{ 
                 color: theme => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)',
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                display: 'block',
+                marginTop: '1px'
               }} />
               <Typography 
                 variant="body2" 
@@ -234,7 +252,10 @@ const MusicCard: FC<MusicCardProps> = ({
                   color: theme => theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)',
                   fontWeight: 500,
                   fontSize: '0.75rem',
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1,
+                  display: 'flex',
+                  alignItems: 'center'
                 }}
               >
                 {music.likes_formatted || (music.likes ? `${music.likes}` : '0')}

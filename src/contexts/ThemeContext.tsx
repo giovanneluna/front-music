@@ -1,4 +1,4 @@
-import { ReactNode, createContext, useContext, useEffect, useState } from 'react';
+import { ReactNode, createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { getTheme } from '../theme';
@@ -17,16 +17,25 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const savedMode = localStorage.getItem('theme-mode');
     return (savedMode as ThemeMode) || 'light';
   });
-
+  
+  const isTogglingRef = useRef(false);
   const theme = getTheme(mode);
 
   useEffect(() => {
     localStorage.setItem('theme-mode', mode);
   }, [mode]);
 
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
+    if (isTogglingRef.current) return;
+    
+    isTogglingRef.current = true;
+    
     setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-  };
+    
+    setTimeout(() => {
+      isTogglingRef.current = false;
+    }, 300);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ mode, toggleTheme }}>

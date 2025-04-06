@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Container, CircularProgress, Tabs, Tab } from '@mui/material';
+import { Box, Typography, Paper, Container, CircularProgress, Tabs, Tab, Button } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 import { suggestionService } from '../../services/suggestionService';
 import { Suggestion } from '../../types';
 import SuggestionForm from './SuggestionForm';
 import SuggestionsList from './SuggestionsList';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import AddIcon from '@mui/icons-material/Add';
 
 function SuggestionsPage() {
   const { user } = useAuth();
@@ -15,11 +18,17 @@ function SuggestionsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [tabValue, setTabValue] = useState("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  const [selectedItemsPerPage, setSelectedItemsPerPage] = useState(15);
+  const [selectedSortDirection, setSelectedSortDirection] = useState<'desc' | 'asc'>('desc');
+  
+  const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
 
   const fetchSuggestions = async () => {
     setLoading(true);
     try {
-      const response = await suggestionService.getAll(currentPage, 10, tabValue);
+      const response = await suggestionService.getAll(currentPage, itemsPerPage, tabValue, sortDirection);
       if (response && response.data && response.data.data) {
         setSuggestions(response.data.data);
         setTotalPages(response.data.meta.last_page);
@@ -37,15 +46,31 @@ function SuggestionsPage() {
 
   useEffect(() => {
     fetchSuggestions();
-  }, [currentPage, tabValue]);
+  }, [currentPage, tabValue, itemsPerPage, sortDirection]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
     setTabValue(newValue);
     setCurrentPage(1);
+    setItemsPerPage(selectedItemsPerPage);
+    setSortDirection(selectedSortDirection);
   };
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newPerPage: number) => {
+    setSelectedItemsPerPage(newPerPage);
+  };
+
+  const handleSortDirectionChange = () => {
+    setSelectedSortDirection(prevDirection => prevDirection === 'desc' ? 'asc' : 'desc');
+  };
+
+  const handleApplyFilters = () => {
+    setItemsPerPage(selectedItemsPerPage);
+    setSortDirection(selectedSortDirection);
+    setCurrentPage(1);
   };
 
   const handleOpenForm = () => {
@@ -69,11 +94,20 @@ function SuggestionsPage() {
 
   const handleStatusChange = async (id: number, status: 'approved' | 'rejected', motivo?: string) => {
     try {
+      if (status === 'rejected' && (!motivo || motivo.trim() === '')) {
+        setError("É necessário fornecer um motivo para rejeitar a sugestão");
+        return;
+      }
+      
       await suggestionService.updateStatus(id, status, motivo);
       fetchSuggestions();
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error ${status === 'approved' ? 'approving' : 'rejecting'} suggestion:`, err);
-      setError(`Erro ao ${status === 'approved' ? 'aprovar' : 'rejeitar'} sugestão. Tente novamente mais tarde.`);
+      
+      const errorMessage = err?.response?.data?.message || 
+        `Erro ao ${status === 'approved' ? 'aprovar' : 'rejeitar'} sugestão. Tente novamente mais tarde.`;
+      
+      setError(errorMessage);
     }
   };
 
@@ -84,6 +118,22 @@ function SuggestionsPage() {
           <Typography variant="h5" component="h1" gutterBottom>
             {user?.is_admin ? 'Gerenciar Sugestões' : 'Minhas Sugestões'}
           </Typography>
+          
+          {!user?.is_admin && (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleOpenForm}
+              startIcon={<AddIcon />}
+              sx={{
+                borderRadius: '8px',
+                textTransform: 'none',
+                fontWeight: 'medium'
+              }}
+            >
+              Sugerir Música
+            </Button>
+          )}
         </Box>
 
         {user?.is_admin && (
@@ -116,15 +166,87 @@ function SuggestionsPage() {
             Nenhuma sugestão encontrada.
           </Typography>
         ) : (
-          <SuggestionsList 
-            suggestions={suggestions} 
-            onDelete={handleDeleteSuggestion}
-            onStatusChange={handleStatusChange}
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
-            isAdmin={user?.is_admin || false}
-          />
+          <>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              mb: 2,
+              flexWrap: { xs: 'wrap', md: 'nowrap' },
+              gap: { xs: 1.5, md: 0 }
+            }}>
+              <Button
+                variant="outlined"
+                color="primary"
+                size="small"
+                onClick={handleSortDirectionChange}
+                startIcon={selectedSortDirection === 'desc' ? 
+                  <ArrowDownwardIcon fontSize="small" /> : 
+                  <ArrowUpwardIcon fontSize="small" />}
+                sx={{ 
+                  borderRadius: '8px',
+                  minWidth: '140px',
+                  textTransform: 'none',
+                  fontWeight: 'medium'
+                }}
+              >
+                {selectedSortDirection === 'desc' ? 'Mais Recentes' : 'Mais Antigas'}
+              </Button>
+              
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                justifyContent: { xs: 'flex-start', md: 'center' },
+                flex: '1 1 auto',
+              }}>
+                <Typography variant="body2" color="textSecondary" sx={{ mr: 1, whiteSpace: 'nowrap' }}>
+                  Itens por página:
+                </Typography>
+                {[5, 15, 50].map((size) => (
+                  <Button
+                    key={size}
+                    variant={selectedItemsPerPage === size ? "contained" : "outlined"}
+                    size="small"
+                    onClick={() => handleItemsPerPageChange(size)}
+                    sx={{ 
+                      minWidth: '32px', 
+                      height: '28px',
+                      borderRadius: '14px',
+                      fontSize: '0.75rem',
+                      mx: 0.5
+                    }}
+                  >
+                    {size}
+                  </Button>
+                ))}
+              </Box>
+              
+              <Button 
+                variant="contained"
+                size="small"
+                onClick={handleApplyFilters}
+                color="primary"
+                sx={{ 
+                  borderRadius: '8px',
+                  minWidth: '120px',
+                  textTransform: 'none'
+                }}
+              >
+                Aplicar Filtros
+              </Button>
+            </Box>
+            
+            <SuggestionsList 
+              suggestions={suggestions} 
+              onDelete={handleDeleteSuggestion}
+              onStatusChange={handleStatusChange}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+              isAdmin={user?.is_admin || false}
+            />
+          </>
         )}
       </Paper>
 

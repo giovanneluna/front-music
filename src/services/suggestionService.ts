@@ -21,9 +21,32 @@ interface SuggestionResponse {
   is_admin: boolean
 }
 
+export const validateYoutubeUrl = (url: string): boolean => {
+  return /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(
+    url
+  )
+}
+
+export const extractYoutubeId = (url: string): string | null => {
+  const match = url.match(
+    /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/
+  )
+  return match ? match[4] : null
+}
+
 export const suggestionService = {
-  getAll: async (page = 1, perPage = 10, status?: string) => {
-    const params: Record<string, any> = { page, per_page: perPage }
+  getAll: async (
+    page = 1,
+    perPage = 15,
+    status?: string,
+    sortDirection: "asc" | "desc" = "desc"
+  ) => {
+    const params: Record<string, any> = {
+      page,
+      per_page: perPage,
+      sort_direction: sortDirection,
+      sort_by: "created_at",
+    }
 
     if (status && status !== "all") {
       params.status = status
@@ -43,12 +66,25 @@ export const suggestionService = {
   },
 
   create: async (url: string) => {
-    const response = await api.post<{
-      status: string
-      message: string
-      data: Suggestion
-    }>("/suggestions", { url })
-    return response.data
+    if (!validateYoutubeUrl(url)) {
+      throw new Error(
+        "URL do YouTube inválida. Utilize um link no formato correto"
+      )
+    }
+
+    try {
+      const response = await api.post<{
+        status: string
+        message: string
+        data: Suggestion
+      }>("/suggestions", { url })
+      return response.data
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      throw error
+    }
   },
 
   delete: async (id: number) => {
@@ -60,19 +96,46 @@ export const suggestionService = {
     status: "approved" | "rejected",
     motivo?: string
   ) => {
-    const response = await api.post<{
-      status: string
-      message: string
-      data: Suggestion
-    }>(`/suggestions/${id}/status/${status}`, { motivo })
-    return response.data
+    try {
+      const response = await api.post<{
+        status: string
+        message: string
+        data: Suggestion
+      }>(`/suggestions/${id}/status/${status}`, { motivo })
+      return response.data
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      throw error
+    }
   },
 
   getVideoInfo: async (youtubeUrl: string) => {
-    const response = await api.post<{ status: string; data: any }>(
-      "/youtube/info",
-      { youtube_url: youtubeUrl }
-    )
-    return response.data
+    if (!validateYoutubeUrl(youtubeUrl)) {
+      throw new Error(
+        "URL do YouTube inválida. Utilize um link no formato correto"
+      )
+    }
+
+    try {
+      const response = await api.post<{ status: string; data: any }>(
+        "/youtube/info",
+        { youtube_url: youtubeUrl }
+      )
+      return response.data
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      } else if (error.response?.status === 404) {
+        throw new Error(
+          "API não encontrada. Verifique a configuração do servidor."
+        )
+      }
+      throw new Error("Erro ao obter informações do vídeo")
+    }
   },
+
+  validateYoutubeUrl,
+  extractYoutubeId,
 }

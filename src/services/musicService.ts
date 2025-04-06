@@ -1,34 +1,24 @@
 import api from "./api"
-import { Music, PaginatedResponse } from "../types"
+import { Music } from "../types"
+import { validateYoutubeUrl, extractYoutubeId } from "./suggestionService"
 
-function extractYoutubeId(url: string): string | null {
-  if (!url) return null
-
-  url = url.trim()
-
-  const patterns = [
-    /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})(?:&|\?|$)/,
-    /youtu\.be\/([a-zA-Z0-9_-]{11})(?:\?|$)/,
-    /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})(?:\?|$)/,
-    /youtube\.com\/v\/([a-zA-Z0-9_-]{11})(?:\?|$)/,
-    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})(?:\?|$)/,
-  ]
-
-  for (const pattern of patterns) {
-    const match = url.match(pattern)
-    if (match && match[1]) {
-      if (match[1].length === 11) {
-        return match[1]
-      }
+interface PaginatedResponse<T> {
+  status: string
+  data: {
+    data: T[]
+    meta: {
+      current_page: number
+      last_page: number
+      per_page: number
+      total: number
+    }
+    links: {
+      first: string
+      last: string
+      next: string | null
+      prev: string | null
     }
   }
-
-  const simpleIdMatch = url.match(/[a-zA-Z0-9_-]{11}/)
-  if (simpleIdMatch && simpleIdMatch[0]) {
-    return simpleIdMatch[0]
-  }
-
-  return null
 }
 
 export const musicService = {
@@ -54,12 +44,7 @@ export const musicService = {
   create: async (
     music: Omit<
       Music,
-      | "id"
-      | "likes"
-      | "views_formatted"
-      | "likes_formatted"
-      | "created_at"
-      | "updated_at"
+      "id" | "views_formatted" | "likes_formatted" | "created_at" | "updated_at"
     >
   ) => {
     const response = await api.post<Music>("/musics", music)
@@ -67,6 +52,10 @@ export const musicService = {
   },
 
   createFromYoutubeUrl: async (youtubeUrl: string) => {
+    if (!validateYoutubeUrl(youtubeUrl)) {
+      throw new Error("URL do YouTube inválida")
+    }
+
     const youtubeId = extractYoutubeId(youtubeUrl)
     if (!youtubeId) {
       throw new Error("URL do YouTube inválida")
@@ -81,15 +70,11 @@ export const musicService = {
 
       return response.data
     } catch (error: any) {
-      console.error("Erro ao criar música a partir da URL do YouTube:", error)
-
-      if (error.response) {
-        console.error("Resposta de erro:", {
-          status: error.response.status,
-          data: error.response.data,
-        })
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      } else if (error.response?.data?.errors?.youtube_id) {
+        throw new Error(error.response.data.errors.youtube_id[0])
       }
-
       throw error
     }
   },
@@ -123,16 +108,29 @@ export const musicService = {
   },
 
   getYoutubeVideoInfo: async (youtubeUrl: string) => {
+    if (!validateYoutubeUrl(youtubeUrl)) {
+      throw new Error("URL do YouTube inválida")
+    }
+
     try {
       const response = await api.post<{
         status: string
         data: {
           titulo: string
           visualizacoes: number
+          likes: number
           youtube_id: string
           thumb: string
         }
       }>("/youtube/info", { youtube_url: youtubeUrl })
+
+      if (
+        response.status !== 200 ||
+        !response.data ||
+        response.data.status === "error"
+      ) {
+        throw new Error("Erro ao obter informações do vídeo")
+      }
 
       return response.data
     } catch (error: any) {
@@ -147,8 +145,6 @@ export const musicService = {
       }
     }
   },
-
-  extractYoutubeId,
 }
 
 export const getMusics = async (
@@ -171,7 +167,6 @@ export const getMusics = async (
     )
     return response.data
   } catch (error) {
-    console.error("Error fetching musics:", error)
     throw error
   }
 }
@@ -185,7 +180,6 @@ export const getTopMusics = async (limit = 5) => {
     )
     return response.data
   } catch (error) {
-    console.error("Error fetching top musics:", error)
     throw error
   }
 }
@@ -199,7 +193,6 @@ export const suggestMusic = async (data: {
     const response = await api.post("/suggestions", data)
     return response.data
   } catch (error) {
-    console.error("Error suggesting music:", error)
     throw error
   }
 }

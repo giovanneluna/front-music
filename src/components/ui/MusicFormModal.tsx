@@ -11,12 +11,21 @@ import {
   IconButton,
   InputAdornment,
   Stack,
-  Alert
+  Alert,
+  Typography,
+  Tooltip,
+  Paper
 } from '@mui/material';
-import { Close as CloseIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Search as SearchIcon } from '@mui/icons-material';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import ThumbUpIcon from '@mui/icons-material/ThumbUp';
+import YouTubeIcon from '@mui/icons-material/YouTube';
+import LinkIcon from '@mui/icons-material/Link';
+import ImageIcon from '@mui/icons-material/Image';
+import SaveIcon from '@mui/icons-material/Save';
 import { Music } from '../../types';
 import { musicService } from '../../services/musicService';
-import api from '../../services/api';
+import { validateYoutubeUrl } from '../../services/suggestionService';
 
 interface MusicFormModalProps {
   open: boolean;
@@ -27,9 +36,8 @@ interface MusicFormModalProps {
 
 interface FormData {
   title: string;
-  artist?: string;
-  duration?: string;
   views: number;
+  likes: number;
   youtube_id: string;
   thumbnail: string;
 }
@@ -45,9 +53,8 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [formData, setFormData] = useState<FormData>({
     title: '',
-    artist: '',
-    duration: '',
     views: 0,
+    likes: 0,
     youtube_id: '',
     thumbnail: ''
   });
@@ -59,9 +66,8 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
     if (music) {
       setFormData({
         title: music.title,
-        artist: '',
-        duration: '',
         views: music.views || 0,
+        likes: music.likes || 0,
         youtube_id: music.youtube_id,
         thumbnail: music.thumbnail
       });
@@ -69,9 +75,8 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
     } else {
       setFormData({
         title: '',
-        artist: '',
-        duration: '',
         views: 0,
+        likes: 0,
         youtube_id: '',
         thumbnail: ''
       });
@@ -86,7 +91,7 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'views' ? Number(value) : value
+      [name]: ['views', 'likes'].includes(name) ? Number(value) : value
     }));
     
     if (validationErrors[name]) {
@@ -105,53 +110,61 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
     }
   };
 
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) {
+      return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+      return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toLocaleString();
+  };
+
   const extractYoutubeId = async () => {
     if (!youtubeUrl) {
-      setError('Por favor, insira a URL do YouTube');
+      setValidationErrors({
+        youtube_id: ['A URL do YouTube é obrigatória']
+      });
       return;
     }
-
-    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)[a-zA-Z0-9_-]{11}(?:\S+)?$/;
-    if (!youtubeRegex.test(youtubeUrl)) {
-      setError('URL inválida. Use um formato como: https://www.youtube.com/watch?v=XXXXXXXXXXX ou https://youtu.be/XXXXXXXXXXX');
+    
+    if (loading) return;
+    
+    const url = youtubeUrl.trim();
+    
+    if (!validateYoutubeUrl(url)) {
+      setValidationErrors({
+        youtube_id: ['A URL do YouTube inválida. Utilize um link no formato correto']
+      });
       return;
     }
-
+    
     setLoading(true);
     setError(null);
+    setValidationErrors({});
     
     try {
-      const response = await musicService.getYoutubeVideoInfo(youtubeUrl);
+      const response = await musicService.getYoutubeVideoInfo(url);
       
       if (!response || !response.data) {
-        setError('Não foi possível obter informações do vídeo');
-        setLoading(false);
-        return;
+        throw new Error('Não foi possível obter informações do vídeo');
       }
       
       const videoInfo = response.data;
       
-      const youtubeId = musicService.extractYoutubeId(youtubeUrl);
-      
       setFormData({
         title: videoInfo.titulo || '',
-        artist: '',
-        duration: '',
         views: videoInfo.visualizacoes || 0,
-        youtube_id: youtubeId || '',
+        likes: videoInfo.likes || 0,
+        youtube_id: videoInfo.youtube_id || '',
         thumbnail: videoInfo.thumb || ''
       });
       
-      setUsingYoutubeUrl(true);
+      setUsingYoutubeUrl(false);
     } catch (err: any) {
       if (err.message) {
         setError(err.message);
-      } else if (err.response?.status === 404) {
-        setError('API não encontrada. Verifique a configuração do servidor.');
-      } else if (err.response?.data?.message) {
-        setError(err.response.data.message);
       } else {
-        setError('Erro ao obter informações do YouTube. Tente novamente.');
+        setError('Não foi possível obter informações do vídeo do YouTube.');
       }
     } finally {
       setLoading(false);
@@ -184,6 +197,7 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
         await musicService.update(music.id, {
           title: formData.title,
           views: formData.views,
+          likes: formData.likes,
           youtube_id: formData.youtube_id,
           thumbnail: formData.thumbnail
         });
@@ -198,14 +212,13 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
           title: formData.title,
           youtube_id: formData.youtube_id,
           thumbnail: formData.thumbnail,
-          views: formData.views
+          views: formData.views,
+          likes: formData.likes
         });
         onSave?.();
         onClose();
       }
     } catch (err: any) {
-      console.error('Erro ao salvar música:', err);
-      
       if (err.response && err.response.status === 422 && err.response.data.errors) {
         setValidationErrors(err.response.data.errors);
         
@@ -242,17 +255,26 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
         }
       }}
     >
-      <DialogTitle>
-        {isEditMode ? 'Editar Música' : 'Adicionar Música'}
+      <DialogTitle sx={{
+        bgcolor: theme => theme.palette.primary.main,
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <YouTubeIcon />
+          <Typography variant="h6">
+            {isEditMode ? 'Editar Música' : 'Adicionar Música'}
+          </Typography>
+        </Box>
         <IconButton
           aria-label="close"
           onClick={onClose}
           disabled={loading}
           sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: theme => theme.palette.error.main,
+            color: 'white',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
             borderRadius: 2
           }}
         >
@@ -260,9 +282,9 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
         </IconButton>
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent sx={{ pt: 3 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+          <Alert severity="error" sx={{ mb: 3, borderRadius: 2, mt: 1 }}>
             {error}
             {error?.includes('já existe') && (
               <Box mt={1} display="flex" justifyContent="flex-end">
@@ -288,116 +310,228 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
           </Alert>
         )}
 
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
+        <Box component="form" onSubmit={handleSubmit}>
           {!isEditMode && (
-            <Box mb={2}>
-              <TextField
-                label="URL do YouTube"
-                value={youtubeUrl}
-                onChange={handleYoutubeUrlChange}
-                fullWidth
-                disabled={loading}
-                placeholder="https://www.youtube.com/watch?v=..."
-                helperText={getFieldError('youtube_id') || "Cole a URL do YouTube para obter automaticamente as informações do vídeo"}
-                error={!!getFieldError('youtube_id')}
-                InputProps={{
-                  sx: { borderRadius: 2 },
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      {youtubeUrl && !loading && (
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            setYoutubeUrl('');
-                            setError(null);
-                            setValidationErrors({});
-                            setFormData(prev => ({
-                              ...prev,
-                              youtube_id: ''
-                            }));
-                          }}
-                          edge="end"
-                          sx={{ borderRadius: 2 }}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      )}
-                      <Button 
-                        onClick={extractYoutubeId}
-                        variant="contained"
-                        disabled={loading || !youtubeUrl}
-                        sx={{ whiteSpace: 'nowrap', ml: 1, borderRadius: 10 }}
-                      >
-                        {loading ? <CircularProgress size={24} /> : 'Procurar'}
-                      </Button>
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Box>
+            <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: theme => theme.palette.grey[50], borderRadius: 2 }}>
+              <Typography variant="body2" fontWeight="medium" sx={{ 
+                mb: 1.5, 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1
+              }}>
+                <YouTubeIcon fontSize="small" color="error" />
+                URL do YouTube
+              </Typography>
+              
+              <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="center">
+                <Box sx={{ width: '100%' }}>
+                  <TextField
+                    value={youtubeUrl}
+                    onChange={handleYoutubeUrlChange}
+                    fullWidth
+                    disabled={loading}
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    error={!!getFieldError('youtube_id')}
+                    InputProps={{
+                      sx: { 
+                        borderRadius: 2,
+                        height: '40px'
+                      }
+                    }}
+                    size="small"
+                  />
+                  <Typography variant="caption" color={getFieldError('youtube_id') ? "error" : "text.secondary"} sx={{ display: 'block', mt: 1, ml: 1 }}>
+                    {getFieldError('youtube_id') || "Cole a URL do YouTube para obter automaticamente as informações do vídeo"}
+                  </Typography>
+                </Box>
+                <Box sx={{ 
+                  width: { xs: '100%', md: '40%' }, 
+                  minWidth: '140px',
+                  mt: { xs: 0, md: 0 },
+                  alignSelf: { xs: 'stretch', md: 'flex-start' }
+                }}>
+                  <Button 
+                    onClick={extractYoutubeId}
+                    variant="contained"
+                    disabled={loading || !youtubeUrl}
+                    fullWidth
+                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SearchIcon />}
+                    sx={{ 
+                      height: '40px',
+                      borderRadius: 2,
+                      boxShadow: 2,
+                      textTransform: 'none',
+                      px: 2
+                    }}
+                  >
+                    {loading ? 'Buscando...' : 'Procurar'}
+                  </Button>
+                </Box>
+              </Stack>
+            </Paper>
           )}
 
-          <Stack spacing={2}>
-            <TextField
-              label="Título"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              fullWidth
-              disabled={loading}
-              required
-              error={!!getFieldError('title')}
-              helperText={getFieldError('title')}
-              InputProps={{
-                sx: { borderRadius: 2 }
-              }}
-            />
+          <Stack spacing={3}>
+            <Paper elevation={0} sx={{ p: 2, bgcolor: theme => theme.palette.grey[50], borderRadius: 2 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" fontWeight="medium" sx={{ 
+                  mb: 1.5, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1
+                }}>
+                  <LinkIcon fontSize="small" color="primary" />
+                  Título
+                </Typography>
+                <TextField
+                  label="Título da música"
+                  name="title"
+                  value={formData.title}
+                  onChange={handleChange}
+                  fullWidth
+                  disabled={loading}
+                  required
+                  error={!!getFieldError('title')}
+                  helperText={getFieldError('title')}
+                  InputProps={{
+                    sx: { borderRadius: 2 }
+                  }}
+                  size="small"
+                />
+              </Box>
 
-            <TextField
-              label="Visualizações"
-              name="views"
-              value={formData.views}
-              onChange={handleChange}
-              fullWidth
-              disabled={loading}
-              type="number"
-              required
-              error={!!getFieldError('views')}
-              helperText={getFieldError('views')}
-              InputProps={{
-                sx: { borderRadius: 2 }
-              }}
-            />
+              <Box sx={{
+                display: 'flex',
+                gap: 2,
+                flexWrap: 'wrap'
+              }}>
+                <Box sx={{ flex: 1, minWidth: '140px' }}>
+                  <Typography variant="body2" fontWeight="medium" sx={{ 
+                    mb: 1.5, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1
+                  }}>
+                    <VisibilityIcon fontSize="small" color="action" />
+                    Visualizações
+                  </Typography>
+                  <TextField
+                    label="Visualizações"
+                    name="views"
+                    value={formData.views}
+                    onChange={handleChange}
+                    fullWidth
+                    disabled={loading}
+                    type="number"
+                    required
+                    error={!!getFieldError('views')}
+                    helperText={getFieldError('views')}
+                    InputProps={{
+                      sx: { borderRadius: 2 },
+                      endAdornment: formData.views > 0 && (
+                        <InputAdornment position="end">
+                          <Typography variant="caption" color="text.secondary">
+                            {formatNumber(formData.views)}
+                          </Typography>
+                        </InputAdornment>
+                      )
+                    }}
+                    size="small"
+                  />
+                </Box>
 
-            <TextField
-              label="YouTube ID"
-              name="youtube_id"
-              value={formData.youtube_id}
-              onChange={handleChange}
-              fullWidth
-              disabled={loading || isEditMode || usingYoutubeUrl}
-              required
-              error={!!getFieldError('youtube_id')}
-              helperText={getFieldError('youtube_id')}
-              InputProps={{
-                sx: { borderRadius: 2 }
-              }}
-            />
+                <Box sx={{ flex: 1, minWidth: '140px' }}>
+                  <Typography variant="body2" fontWeight="medium" sx={{ 
+                    mb: 1.5, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: 1
+                  }}>
+                    <ThumbUpIcon fontSize="small" color="primary" />
+                    Likes
+                  </Typography>
+                  <TextField
+                    label="Likes"
+                    name="likes"
+                    value={formData.likes}
+                    onChange={handleChange}
+                    fullWidth
+                    disabled={loading}
+                    type="number"
+                    required
+                    error={!!getFieldError('likes')}
+                    helperText={getFieldError('likes')}
+                    InputProps={{
+                      sx: { borderRadius: 2 },
+                      endAdornment: formData.likes > 0 && (
+                        <InputAdornment position="end">
+                          <Typography variant="caption" color="text.secondary">
+                            {formatNumber(formData.likes)}
+                          </Typography>
+                        </InputAdornment>
+                      )
+                    }}
+                    size="small"
+                  />
+                </Box>
+              </Box>
+            </Paper>
 
-            <TextField
-              label="Thumbnail URL"
-              name="thumbnail"
-              value={formData.thumbnail}
-              onChange={handleChange}
-              fullWidth
-              disabled={loading}
-              required
-              error={!!getFieldError('thumbnail')}
-              helperText={getFieldError('thumbnail')}
-              InputProps={{
-                sx: { borderRadius: 2 }
-              }}
-            />
+            <Paper elevation={0} sx={{ p: 2, bgcolor: theme => theme.palette.grey[50], borderRadius: 2 }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" fontWeight="medium" sx={{ 
+                  mb: 1.5, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1
+                }}>
+                  <YouTubeIcon fontSize="small" color="error" />
+                  YouTube ID
+                </Typography>
+                <TextField
+                  label="ID do vídeo"
+                  name="youtube_id"
+                  value={formData.youtube_id}
+                  onChange={handleChange}
+                  fullWidth
+                  disabled={loading || usingYoutubeUrl}
+                  required
+                  error={!!getFieldError('youtube_id')}
+                  helperText={getFieldError('youtube_id')}
+                  InputProps={{
+                    sx: { borderRadius: 2 }
+                  }}
+                  size="small"
+                />
+              </Box>
+
+              <Box>
+                <Typography variant="body2" fontWeight="medium" sx={{ 
+                  mb: 1.5, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1
+                }}>
+                  <ImageIcon fontSize="small" color="primary" />
+                  Thumbnail
+                </Typography>
+                <TextField
+                  label="URL da thumbnail"
+                  name="thumbnail"
+                  value={formData.thumbnail}
+                  onChange={handleChange}
+                  fullWidth
+                  disabled={loading}
+                  required
+                  error={!!getFieldError('thumbnail')}
+                  helperText={getFieldError('thumbnail')}
+                  InputProps={{
+                    sx: { borderRadius: 2 }
+                  }}
+                  size="small"
+                />
+              </Box>
+            </Paper>
 
             {formData.thumbnail && (
               <Box
@@ -407,15 +541,26 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                   mt: 1
                 }}
               >
-                <img
-                  src={formData.thumbnail}
-                  alt={formData.title}
-                  style={{
-                    maxWidth: '100%',
-                    maxHeight: '200px',
-                    borderRadius: '12px'
+                <Paper 
+                  elevation={3} 
+                  sx={{ 
+                    p: 0.5, 
+                    maxWidth: '320px',
+                    overflow: 'hidden',
+                    borderRadius: 3
                   }}
-                />
+                >
+                  <img
+                    src={formData.thumbnail}
+                    alt={formData.title}
+                    style={{
+                      width: '100%',
+                      height: 'auto',
+                      borderRadius: '8px',
+                      display: 'block'
+                    }}
+                  />
+                </Paper>
               </Box>
             )}
           </Stack>
@@ -423,21 +568,21 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3 }}>
-       
         <Button 
           onClick={handleSubmit}
           variant="contained" 
           color="primary"
           disabled={loading || (!usingYoutubeUrl && (!formData.title || !formData.youtube_id || formData.views === 0 || !formData.thumbnail))}
-          sx={{ borderRadius: 10 }}
+          sx={{ 
+            borderRadius: 2,
+            py: 1.2,
+            px: 3,
+            textTransform: 'none',
+            fontWeight: 'bold'
+          }}
+          startIcon={loading ? <CircularProgress size={20} /> : <SaveIcon />}
         >
-          {loading ? (
-            <CircularProgress size={24} />
-          ) : isEditMode ? (
-            'Salvar Alterações'
-          ) : (
-            'Adicionar Música'
-          )}
+          {isEditMode ? 'Salvar Alterações' : 'Adicionar Música'}
         </Button>
       </DialogActions>
     </Dialog>

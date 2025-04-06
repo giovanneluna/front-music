@@ -21,14 +21,17 @@ import {
   Tooltip,
   useMediaQuery,
   useTheme,
-  CircularProgress
+  CircularProgress,
+  PaginationItem
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Check as CheckIcon,
   Close as CloseIcon,
   Visibility as VisibilityIcon,
-  YouTube as YouTubeIcon
+  YouTube as YouTubeIcon,
+  NavigateBefore as NavigateBeforeIcon,
+  NavigateNext as NavigateNextIcon
 } from '@mui/icons-material';
 import { Suggestion } from '../../types';
 import { format } from 'date-fns';
@@ -54,6 +57,7 @@ function SuggestionsList({
   const [videoDialogOpen, setVideoDialogOpen] = useState(false);
   const [videoUrl, setVideoUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rejectionError, setRejectionError] = useState(false);
 
   const handleDeleteClick = (suggestion: Suggestion) => {
     setSelectedSuggestion(suggestion);
@@ -76,6 +80,7 @@ function SuggestionsList({
     setSelectedSuggestion(suggestion);
     setActionType(type);
     setRejectionReason('');
+    setRejectionError(false);
     setActionDialogOpen(true);
   };
 
@@ -83,10 +88,16 @@ function SuggestionsList({
     setActionDialogOpen(false);
     setSelectedSuggestion(null);
     setRejectionReason('');
+    setRejectionError(false);
   };
 
   const handleConfirmAction = async () => {
     if (selectedSuggestion) {
+      if (actionType === 'reject' && !rejectionReason.trim()) {
+        setRejectionError(true);
+        return;
+      }
+      
       setLoading(true);
       try {
         if (actionType === 'approve') {
@@ -144,6 +155,13 @@ function SuggestionsList({
 
   const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
     onPageChange(page);
+    
+    setTimeout(() => {
+      const tableContainer = document.querySelector('table');
+      if (tableContainer) {
+        tableContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   return (
@@ -152,19 +170,44 @@ function SuggestionsList({
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Título</TableCell>
-              {!isMobile && <TableCell>Status</TableCell>}
-              <TableCell>Data</TableCell>
-              <TableCell align="right">Ações</TableCell>
+              {!isMobile && <TableCell width="5%">ID</TableCell>}
+              <TableCell width={isMobile ? "65%" : "55%"} sx={{ maxWidth: '400px' }}>Título</TableCell>
+              {!isMobile && <TableCell width="15%">Status</TableCell>}
+              <TableCell width={isMobile ? "15%" : "10%"}>Data</TableCell>
+              <TableCell width={isMobile ? "20%" : "15%"} align="right">Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {suggestions.map((suggestion) => (
               <TableRow key={suggestion.id}>
-                <TableCell>{suggestion.title}</TableCell>
+                {!isMobile && <TableCell>{suggestion.id}</TableCell>}
+                <TableCell sx={{ 
+                  maxWidth: { xs: '200px', sm: '300px', md: '400px' },
+                  wordBreak: 'break-word', 
+                  whiteSpace: 'normal'
+                }}>
+                  {suggestion.title}
+                </TableCell>
                 {!isMobile && <TableCell>{getStatusChip(suggestion.status)}</TableCell>}
-                <TableCell>{formatDate(suggestion.created_at)}</TableCell>
-                <TableCell align="right">
+                <TableCell sx={{ 
+                  whiteSpace: 'nowrap',
+                  fontSize: isMobile ? '0.75rem' : 'inherit',
+                  textAlign: 'center'
+                }}>
+                  {isMobile 
+                    ? format(new Date(suggestion.created_at), 'dd/MM/yy', { locale: ptBR })
+                    : formatDate(suggestion.created_at)
+                  }
+                </TableCell>
+                <TableCell align={isMobile ? "center" : "right"} sx={{ 
+                  pl: isMobile ? 0 : undefined,
+                  pr: isMobile ? 0 : undefined,
+                  display: 'flex',
+                  flexDirection: isMobile ? 'column' : 'row',
+                  alignItems: 'center',
+                  justifyContent: isMobile ? 'center' : 'flex-end',
+                  gap: isMobile ? 0.5 : 0
+                }}>
                   <Tooltip title="Visualizar vídeo">
                     <IconButton
                       color="primary"
@@ -222,7 +265,16 @@ function SuggestionsList({
             count={totalPages} 
             page={currentPage} 
             onChange={handlePageChange} 
-            color="primary" 
+            color="primary"
+            renderItem={(item) => (
+              <PaginationItem
+                components={{
+                  previous: NavigateBeforeIcon,
+                  next: NavigateNextIcon
+                }}
+                {...item}
+              />
+            )}
           />
         </Box>
       )}
@@ -289,7 +341,12 @@ function SuggestionsList({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={actionDialogOpen} onClose={handleCloseActionDialog}>
+      <Dialog 
+        open={actionDialogOpen} 
+        onClose={handleCloseActionDialog}
+        maxWidth={actionType === 'reject' ? "sm" : undefined}
+        fullWidth={actionType === 'reject'}
+      >
         <DialogTitle>
           {actionType === 'approve' ? 'Aprovar sugestão' : 'Rejeitar sugestão'}
           <IconButton
@@ -307,7 +364,10 @@ function SuggestionsList({
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ 
+          minWidth: actionType === 'reject' ? { xs: '300px', sm: '400px' } : undefined, 
+          minHeight: actionType === 'reject' ? '250px' : undefined 
+        }}>
           <Typography sx={{ mb: 1 }}>
             {actionType === 'approve'
               ? `Deseja aprovar a sugestão:`
@@ -347,9 +407,16 @@ function SuggestionsList({
               multiline
               rows={3}
               value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
+              onChange={(e) => {
+                setRejectionReason(e.target.value);
+                if (e.target.value.trim()) {
+                  setRejectionError(false);
+                }
+              }}
               required
               disabled={loading}
+              error={rejectionError}
+              helperText={rejectionError ? "O motivo da rejeição é obrigatório" : ""}
             />
           )}
         </DialogContent>
