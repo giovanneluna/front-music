@@ -66,9 +66,7 @@ function Home() {
     
     setTimeout(() => {
       fetchTopMusics().then(() => {
-        console.log("Lista de top músicas atualizada com sucesso");
       }).catch(err => {
-        console.error("Erro ao atualizar top músicas:", err);
       });
     }, 300);
   }, []);

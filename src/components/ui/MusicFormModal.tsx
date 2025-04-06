@@ -121,45 +121,34 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
     setError(null);
     
     try {
-      let youtubeId = '';
+      const response = await musicService.getYoutubeVideoInfo(youtubeUrl);
       
-      if (youtubeUrl.includes('youtube.com/watch?v=')) {
-        const url = new URL(youtubeUrl);
-        youtubeId = url.searchParams.get('v') || '';
-      } else if (youtubeUrl.includes('youtu.be/')) {
-        youtubeId = youtubeUrl.split('youtu.be/')[1]?.split(/[?&]/)[0] || '';
-      } else if (youtubeUrl.includes('youtube.com/embed/')) {
-        youtubeId = youtubeUrl.split('youtube.com/embed/')[1]?.split(/[?&]/)[0] || '';
-      }
-      
-      if (!youtubeId) {
-        setError('Não foi possível extrair o ID do YouTube da URL');
-        setLoading(false);
-        return;
-      }
-      
-      const response = await api.get(`/api/youtube-info/${youtubeId}`);
-      const videoData = response.data;
-      
-      if (!videoData) {
+      if (!response || !response.data) {
         setError('Não foi possível obter informações do vídeo');
         setLoading(false);
         return;
       }
       
+      const videoInfo = response.data;
+      
+      const youtubeId = musicService.extractYoutubeId(youtubeUrl);
+      
       setFormData({
-        title: videoData.title || '',
-        artist: videoData.channelTitle || '',
+        title: videoInfo.titulo || '',
+        artist: '',
         duration: '',
-        views: videoData.viewCount || 0,
-        youtube_id: youtubeId,
-        thumbnail: videoData.thumbnail || ''
+        views: videoInfo.visualizacoes || 0,
+        youtube_id: youtubeId || '',
+        thumbnail: videoInfo.thumb || ''
       });
       
       setUsingYoutubeUrl(true);
     } catch (err: any) {
-      console.error('Erro ao obter informações do YouTube:', err);
-      if (err.response && err.response.data && err.response.data.message) {
+      if (err.message) {
+        setError(err.message);
+      } else if (err.response?.status === 404) {
+        setError('API não encontrada. Verifique a configuração do servidor.');
+      } else if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else {
         setError('Erro ao obter informações do YouTube. Tente novamente.');

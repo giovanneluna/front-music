@@ -42,7 +42,6 @@ export const DeleteConfirmationModal: FC<DeleteConfirmationModalProps> = memo(({
             bgcolor: 'background.paper', 
             borderLeft: '4px solid',
             borderColor: 'error.main',
-            borderRadius: 12,
             boxShadow: 1
           }}
         >

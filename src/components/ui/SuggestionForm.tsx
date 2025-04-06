@@ -53,12 +53,24 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
     
     try {
       const response = await musicService.getYoutubeVideoInfo(youtubeUrl);
-      const videoInfo = response.data;
       
-      setTitle(videoInfo.titulo);
-    } catch (err) {
-      console.error('Erro ao processar URL do YouTube:', err);
-      setError(err instanceof Error ? err.message : 'URL inválida ou erro ao processar o vídeo.');
+      if (!response || !response.data) {
+        throw new Error('Não foi possível obter informações do vídeo');
+      }
+      
+      const videoInfo = response.data;
+      setTitle(videoInfo.titulo || '');
+      
+    } catch (err: any) {
+      if (err.message) {
+        setError(err.message);
+      } else if (err.response?.status === 404) {
+        setError('API não encontrada. Verifique a configuração do servidor.');
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('URL inválida ou erro ao processar o vídeo.');
+      }
     } finally {
       setSearchingVideo(false);
     }

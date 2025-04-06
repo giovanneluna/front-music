@@ -73,8 +73,6 @@ export const musicService = {
       throw new Error("URL do YouTube inválida")
     }
 
-    console.log("Enviando ID do YouTube para API:", youtubeId)
-
     try {
       const response = await api.post<{
         status: string
@@ -82,7 +80,6 @@ export const musicService = {
         data: Music
       }>("/musics", { youtube_id: youtubeId })
 
-      console.log("Resposta da API:", response.data)
       return response.data
     } catch (error: any) {
       console.error("Erro ao criar música a partir da URL do YouTube:", error)
@@ -127,17 +124,29 @@ export const musicService = {
   },
 
   getYoutubeVideoInfo: async (youtubeUrl: string) => {
-    const response = await api.post<{
-      status: string
-      data: {
-        titulo: string
-        visualizacoes: number
-        youtube_id: string
-        thumb: string
-      }
-    }>("/youtube/info", { youtube_url: youtubeUrl })
+    try {
+      const response = await api.post<{
+        status: string
+        data: {
+          titulo: string
+          visualizacoes: number
+          youtube_id: string
+          thumb: string
+        }
+      }>("/youtube/info", { youtube_url: youtubeUrl })
 
-    return response.data
+      return response.data
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        throw new Error(
+          "API não encontrada. Verifique a configuração do servidor."
+        )
+      } else if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      } else {
+        throw new Error("Erro ao obter informações do vídeo do YouTube.")
+      }
+    }
   },
 
   extractYoutubeId,

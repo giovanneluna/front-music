@@ -155,10 +155,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded }: MusicListProps) 
       if (onMusicAdded) {
         onMusicAdded();
       }
-      
-      console.log("Atualização completa da interface concluída");
     } catch (error) {
-      console.error("Erro na atualização completa:", error);
     }
   }, [fetchMusics, page, sortOrder, onMusicAdded]);
 
@@ -385,7 +382,6 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded }: MusicListProps) 
             value={sortOrder}
             label="Ordenar por"
             onChange={handleSortChange}
-            sx={{ borderRadius: 8 }}
           >
             <MenuItem value="desc">Maior para menor</MenuItem>
             <MenuItem value="asc">Menor para maior</MenuItem>
