@@ -30,6 +30,21 @@ npm run dev
 
 O aplicativo estará disponível em http://localhost:5173 (ou outro porta que o Vite selecionar).
 
+## Recursos
+
+### Dark Mode
+
+O aplicativo possui suporte completo a tema escuro (Dark Mode):
+- Alternância entre temas claro e escuro
+- Adaptação automática de cores e contrastes
+- Otimização para leitura em ambientes com baixa luminosidade
+
+### Responsividade
+
+- Layout responsivo que se adapta a diferentes tamanhos de tela
+- Navegação simplificada em dispositivos móveis
+- Paginação otimizada para dispositivos móveis (exibe apenas botões de navegação sem números de página)
+
 ## Testes
 
 ### Testes Unitários
@@ -43,7 +58,7 @@ npm test
 Para executar os testes unitários em modo de observação:
 
 ```bash
-npm run test:watch
+npm run test
 ```
 
 Para executar os testes unitários com interface visual:
