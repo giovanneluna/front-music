@@ -9,6 +9,7 @@ import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import AddIcon from '@mui/icons-material/Add';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import { usePagination } from '../../hooks/usePagination';
 
 const MusicCardSkeleton = () => {
   return (
@@ -64,7 +65,6 @@ interface MusicListProps {
 
 const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = false }: MusicListProps) => {
   const [loading, setLoading] = useState(false);
-  const [page, setPage] = useState(1);
   const [musics, setMusics] = useState<Music[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -82,6 +82,14 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
   const updateInProgress = useRef(false);
   const lastCacheKey = useRef<string | null>(null);
   const isChangingPageRef = useRef(false);
+  
+  const { 
+    currentPage, 
+    goToPage, 
+    hasNextPage, 
+    hasPrevPage, 
+    visiblePages 
+  } = usePagination(totalPages);
 
   const shouldShowLoadingState = useCallback(() => {
     return !skipLoading && !isLoggingOut;
@@ -169,7 +177,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     if (lastAuthState.current !== isAuthenticated && !isLoggingOut) {
       lastAuthState.current = isAuthenticated;
       
-      const cacheKey = getCacheKey(page, sortOrder);
+      const cacheKey = getCacheKey(currentPage, sortOrder);
       if (cachedPages.current[cacheKey]) {
         const currentMusicsStr = JSON.stringify(musics);
         const cachedMusicsStr = JSON.stringify(cachedPages.current[cacheKey].data);
@@ -182,27 +190,27 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       
       if (!updateInProgress.current && !isLoggingOut) {
         setTimeout(() => {
-          fetchMusics(page, sortOrder, true);
+          fetchMusics(currentPage, sortOrder, true);
         }, 100);
       }
     }
-  }, [user, page, sortOrder, getCacheKey, fetchMusics, musics, isLoggingOut]);
+  }, [user, currentPage, sortOrder, getCacheKey, fetchMusics, musics, isLoggingOut]);
 
   useEffect(() => {
     if (isLoggingOut) return;
     
     if (!initialLoadDone.current && !updateInProgress.current) {
-      const cacheKey = getCacheKey(page, sortOrder);
+      const cacheKey = getCacheKey(currentPage, sortOrder);
       if (skipLoading && cachedPages.current[cacheKey]?.data) {
         setMusics(cachedPages.current[cacheKey].data);
         setTotalPages(cachedPages.current[cacheKey].meta.last_page);
         initialLoadDone.current = true;
       } else {
-        fetchMusics(page, sortOrder);
+        fetchMusics(currentPage, sortOrder);
         initialLoadDone.current = true;
       }
     }
-  }, [page, sortOrder, fetchMusics, getCacheKey, skipLoading, isLoggingOut]);
+  }, [currentPage, sortOrder, fetchMusics, getCacheKey, skipLoading, isLoggingOut]);
 
   useEffect(() => {
     if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
@@ -212,7 +220,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     }
     
     debounceTimerRef.current = window.setTimeout(() => {
-      fetchMusics(page, sortOrder);
+      fetchMusics(currentPage, sortOrder);
     }, 300);
     
     return () => {
@@ -220,12 +228,12 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
         window.clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [page, sortOrder, fetchMusics, isLoggingOut]);
+  }, [currentPage, sortOrder, fetchMusics, isLoggingOut]);
 
   useEffect(() => {
     if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
     
-    const cacheKey = getCacheKey(page, sortOrder);
+    const cacheKey = getCacheKey(currentPage, sortOrder);
     const currentCache = cachedPages.current[cacheKey];
     
     if (currentCache) {
@@ -237,8 +245,8 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       }
     }
     
-    fetchMusics(page, sortOrder, true);
-  }, [topMusics, page, sortOrder, fetchMusics, musics, getCacheKey, isLoggingOut]);
+    fetchMusics(currentPage, sortOrder, true);
+  }, [topMusics, currentPage, sortOrder, fetchMusics, musics, getCacheKey, isLoggingOut]);
 
   const handlePageChange = useCallback((event: React.MouseEvent<HTMLButtonElement> | null, value: number) => {
     if (event) {
@@ -246,11 +254,11 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       event.stopPropagation();
     }
     
-    if (value === page || isChangingPageRef.current) return;
+    if (value === currentPage || isChangingPageRef.current) return;
     
     isChangingPageRef.current = true;
     
-    setPage(value);
+    goToPage(value);
     
     setTimeout(() => {
       const otherMusicsTitleEl = document.getElementById('outras-musicas-title');
@@ -262,12 +270,12 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
         isChangingPageRef.current = false;
       }, 300);
     }, 100);
-  }, [page]);
+  }, [currentPage, goToPage]);
 
   const handleSortChange = useCallback((event: SelectChangeEvent<string>) => {
     setSortOrder(event.target.value as 'desc' | 'asc');
-    setPage(1);
-  }, []);
+    goToPage(1);
+  }, [goToPage]);
 
   const handleEditMusic = useCallback((music: Music) => {
     setSelectedMusic(music);
@@ -281,10 +289,10 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
   
   const forceFullUpdate = useCallback(async () => {
     try {
-      const cacheKey = getCacheKey(page, sortOrder);
+      const cacheKey = getCacheKey(currentPage, sortOrder);
       delete cachedPages.current[cacheKey];
       
-      await fetchMusics(page, sortOrder, true);
+      await fetchMusics(currentPage, sortOrder, true);
       
       if (onMusicAdded) {
         onMusicAdded();
@@ -292,7 +300,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     } catch (error) {
       console.error('Error updating music list:', error);
     }
-  }, [fetchMusics, page, sortOrder, onMusicAdded, getCacheKey]);
+  }, [fetchMusics, currentPage, sortOrder, onMusicAdded, getCacheKey]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!musicToDelete) return;
@@ -432,8 +440,8 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     buttons.push(
       <Button
         key="prev"
-        disabled={page === 1}
-        onClick={(e) => handlePageChange(e, page - 1)}
+        disabled={!hasPrevPage}
+        onClick={(e) => handlePageChange(e, currentPage - 1)}
         sx={{ 
           minWidth: '40px', 
           mx: 0.5, 
@@ -449,13 +457,13 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       </Button>
     );
     
-    for (let i = 1; i <= totalPages; i++) {
+    for (const pageNum of visiblePages) {
       buttons.push(
         <Button
-          key={i}
-          variant={i === page ? 'contained' : 'outlined'}
+          key={pageNum}
+          variant={pageNum === currentPage ? 'contained' : 'outlined'}
           color="primary"
-          onClick={(e) => handlePageChange(e, i)}
+          onClick={(e) => handlePageChange(e, pageNum)}
           sx={{ 
             minWidth: '40px', 
             mx: 0.5, 
@@ -468,7 +476,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
             lineHeight: 1
           }}
         >
-          {i}
+          {pageNum}
         </Button>
       );
     }
@@ -476,8 +484,8 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     buttons.push(
       <Button
         key="next"
-        disabled={page === totalPages}
-        onClick={(e) => handlePageChange(e, page + 1)}
+        disabled={!hasNextPage}
+        onClick={(e) => handlePageChange(e, currentPage + 1)}
         sx={{ 
           minWidth: '40px', 
           mx: 0.5, 
@@ -498,7 +506,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
         {buttons}
       </Box>
     );
-  }, [totalPages, page, handlePageChange]);
+  }, [totalPages, currentPage, hasNextPage, hasPrevPage, visiblePages, handlePageChange]);
 
   const renderSkeletons = useMemo(() => {
     return Array(5).fill(0).map((_, index) => (

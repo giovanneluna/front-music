@@ -11,7 +11,6 @@ import {
   Alert,
   Typography,
   IconButton,
-  useMediaQuery,
   useTheme,
   Tooltip,
   Paper,
@@ -37,7 +36,6 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   useEffect(() => {
     if (!open) {

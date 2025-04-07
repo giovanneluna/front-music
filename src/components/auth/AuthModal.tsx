@@ -18,7 +18,6 @@ import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../../contexts/AuthContext';
-import { data } from 'react-router-dom';
 
 interface AuthModalProps {
   open: boolean;
@@ -107,8 +106,7 @@ function AuthModal({ open, onClose }: AuthModalProps) {
   const { 
     control: loginControl, 
     handleSubmit: handleLoginSubmit, 
-    formState: { errors: loginErrors, isSubmitting: isLoginSubmitting },
-    setValue: loginSetValue,
+    formState: { isSubmitting: isLoginSubmitting },
     reset: resetLoginForm
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -123,10 +121,8 @@ function AuthModal({ open, onClose }: AuthModalProps) {
   const { 
     control: registerControl, 
     handleSubmit: handleRegisterSubmit, 
-    formState: { errors: registerErrors, isSubmitting: isRegisterSubmitting, isValid: isRegisterValid, isDirty: isRegisterDirty },
-    setValue: registerSetValue,
-    reset: resetRegisterForm,
-    watch: watchRegister
+    formState: { isSubmitting: isRegisterSubmitting, isValid: isRegisterValid, isDirty: isRegisterDirty },
+    reset: resetRegisterForm
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {

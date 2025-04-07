@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { AppBar, Toolbar, Typography, Button, IconButton, Menu, MenuItem, Box, Avatar, useMediaQuery, useTheme as useMuiTheme, CircularProgress } from '@mui/material';
 import { Login as LoginIcon, Person as PersonIcon } from '@mui/icons-material';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
