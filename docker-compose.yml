@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: music-frontend
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://api.musictest.localhost
+    ports:
+      - "5173:5173"
+    networks:
+      - frontend-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: music-frontend-nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/app
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+    depends_on:
+      - frontend
+    networks:
+      - frontend-network
+
+networks:
+  frontend-network:
+    driver: bridge
