@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 
 export interface UsePaginationReturn {
   currentPage: number
@@ -12,9 +12,16 @@ export interface UsePaginationReturn {
 
 export function usePagination(totalPages: number): UsePaginationReturn {
   const [currentPage, setCurrentPage] = useState(1)
+  const initializedRef = useRef(false)
 
   useEffect(() => {
-    if (currentPage > totalPages) {
+    if (!initializedRef.current) {
+      initializedRef.current = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) {
       setCurrentPage(totalPages)
     }
   }, [totalPages, currentPage])
@@ -23,19 +30,21 @@ export function usePagination(totalPages: number): UsePaginationReturn {
   const hasPrevPage = currentPage > 1
 
   const goToPage = (page: number) => {
-    const targetPage = Math.max(1, Math.min(page, totalPages))
+    const targetPage = Math.max(1, Math.min(page, Math.max(1, totalPages)))
     setCurrentPage(targetPage)
   }
 
   const nextPage = () => {
     if (hasNextPage) {
-      setCurrentPage((prev) => prev + 1)
+      const newPage = currentPage + 1
+      setCurrentPage(newPage)
     }
   }
 
   const prevPage = () => {
     if (hasPrevPage) {
-      setCurrentPage((prev) => prev - 1)
+      const newPage = currentPage - 1
+      setCurrentPage(newPage)
     }
   }
 

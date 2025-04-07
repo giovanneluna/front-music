@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import {
   Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
   IconButton,
   Chip,
   Pagination,
@@ -22,7 +15,12 @@ import {
   useMediaQuery,
   useTheme,
   CircularProgress,
-  PaginationItem
+  PaginationItem,
+  Card,
+  CardContent,
+  CardActions,
+  Divider,
+  alpha
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -31,7 +29,8 @@ import {
   Visibility as VisibilityIcon,
   YouTube as YouTubeIcon,
   NavigateBefore as NavigateBeforeIcon,
-  NavigateNext as NavigateNextIcon
+  NavigateNext as NavigateNextIcon,
+  CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import { Suggestion } from '../../types';
 import { format } from 'date-fns';
@@ -133,16 +132,14 @@ function SuggestionsList({
   };
 
   const getStatusChip = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <Chip label="Pendente" color="warning" size="small" />;
-      case 'approved':
-        return <Chip label="Aprovada" color="success" size="small" />;
-      case 'rejected':
-        return <Chip label="Rejeitada" color="error" size="small" />;
-      default:
-        return <Chip label={status} size="small" />;
-    }
+    const statusConfig: Record<string, { label: string, color: 'warning' | 'success' | 'error' | undefined }> = {
+      pending: { label: 'Pendente', color: 'warning' }, 
+      approved: { label: 'Aprovada', color: 'success' }, 
+      rejected: { label: 'Rejeitada', color: 'error' }
+    };
+    
+    const config = statusConfig[status] ?? { label: status, color: undefined };
+    return <Chip label={config.label} color={config.color} size="small" />;
   };
 
   const formatDate = (dateString: string) => {
@@ -157,126 +154,324 @@ function SuggestionsList({
     onPageChange(page);
     
     setTimeout(() => {
-      const tableContainer = document.querySelector('table');
-      if (tableContainer) {
-        tableContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const container = document.getElementById('suggestions-container');
+      if (container) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
   };
 
+  const getCardBackgroundColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return alpha(theme.palette.warning.main, 0.05);
+      case 'approved':
+        return alpha(theme.palette.success.main, 0.05);
+      case 'rejected':
+        return alpha(theme.palette.error.main, 0.05);
+      default:
+        return theme.palette.background.paper;
+    }
+  };
+
+  const getCardBorderColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return theme.palette.warning.main;
+      case 'approved':
+        return theme.palette.success.main;
+      case 'rejected':
+        return theme.palette.error.main;
+      default:
+        return theme.palette.divider;
+    }
+  };
+
   return (
     <>
-      <TableContainer component={Paper} sx={{ mb: 3 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              {!isMobile && <TableCell width="5%">ID</TableCell>}
-              <TableCell width={isMobile ? "65%" : "55%"} sx={{ maxWidth: '400px' }}>Título</TableCell>
-              {!isMobile && <TableCell width="15%">Status</TableCell>}
-              <TableCell width={isMobile ? "15%" : "10%"}>Data</TableCell>
-              <TableCell width={isMobile ? "20%" : "15%"} align="right">Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {suggestions.map((suggestion) => (
-              <TableRow key={suggestion.id}>
-                {!isMobile && <TableCell>{suggestion.id}</TableCell>}
-                <TableCell sx={{ 
-                  maxWidth: { xs: '200px', sm: '300px', md: '400px' },
-                  wordBreak: 'break-word', 
-                  whiteSpace: 'normal'
-                }}>
-                  {suggestion.title}
-                </TableCell>
-                {!isMobile && <TableCell>{getStatusChip(suggestion.status)}</TableCell>}
-                <TableCell sx={{ 
-                  whiteSpace: 'nowrap',
-                  fontSize: isMobile ? '0.75rem' : 'inherit',
-                  textAlign: 'center'
-                }}>
-                  {isMobile 
-                    ? format(new Date(suggestion.created_at), 'dd/MM/yy', { locale: ptBR })
-                    : formatDate(suggestion.created_at)
-                  }
-                </TableCell>
-                <TableCell align={isMobile ? "center" : "right"} sx={{ 
-                  pl: isMobile ? 0 : undefined,
-                  pr: isMobile ? 0 : undefined,
-                  display: 'flex',
-                  flexDirection: isMobile ? 'column' : 'row',
+      <Box id="suggestions-container" sx={{ mb: 3 }}>
+        <Box sx={{ 
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, 1fr)',
+            md: 'repeat(3, 1fr)',
+            lg: 'repeat(3, 1fr)'
+          },
+          gap: { xs: 2, sm: 2, md: 3 }
+        }}>
+          {suggestions.map((suggestion) => (
+            <Card 
+              key={suggestion.id}
+              elevation={2}
+              sx={{ 
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: 2,
+                borderLeft: `4px solid ${getCardBorderColor(suggestion.status)}`,
+                backgroundColor: getCardBackgroundColor(suggestion.status),
+                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                overflow: 'hidden',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: 4
+                }
+              }}
+            >
+              <CardContent sx={{ 
+                flexGrow: 1, 
+                pb: 1, 
+                px: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                height: '100%'
+              }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  mb: 1, 
                   alignItems: 'center',
-                  justifyContent: isMobile ? 'center' : 'flex-end',
-                  gap: isMobile ? 0.5 : 0
+                  width: '100%'
                 }}>
-                  <Tooltip title="Visualizar vídeo">
-                    <IconButton
-                      color="primary"
-                      size="small"
-                      onClick={() => handleVideoView(suggestion)}
-                    >
-                      <VisibilityIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  
-                  {suggestion.status === 'pending' && isAdmin && (
-                    <>
-                      <Tooltip title="Aprovar sugestão">
-                        <IconButton 
-                          color="success" 
-                          size="small"
-                          onClick={() => handleActionClick(suggestion, 'approve')}
-                        >
-                          <CheckIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Rejeitar sugestão">
-                        <IconButton 
-                          color="error" 
-                          size="small"
-                          onClick={() => handleActionClick(suggestion, 'reject')}
-                        >
-                          <CloseIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-                  
-                  {(suggestion.status === 'approved' || suggestion.status === 'rejected') && (
-                    <Tooltip title="Excluir sugestão">
+                  <Box sx={{ 
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '50%'
+                  }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      ID: {suggestion.id}
+                    </Typography>
+                  </Box>
+                  <Box>
+                    {getStatusChip(suggestion.status)}
+                  </Box>
+                </Box>
+                
+                <Tooltip 
+                  title={suggestion.title} 
+                  enterDelay={700}
+                  enterNextDelay={700}
+                  placement="top"
+                  arrow
+                  disableHoverListener={isMobile}
+                >
+                  <Typography 
+                    variant="h6" 
+                    component="h3" 
+                    sx={{ 
+                      fontWeight: 'bold', 
+                      mb: 1,
+                      lineHeight: 1.3,
+                      fontSize: { xs: '0.85rem', sm: '0.9rem' },
+                      wordBreak: 'break-word',
+                      overflowWrap: 'break-word',
+                      hyphens: 'auto',
+                      height: 'auto',
+                      flex: '1 0 auto',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {suggestion.title}
+                  </Typography>
+                </Tooltip>
+                
+                <Box 
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    color: 'text.secondary',
+                    fontSize: '0.8rem',
+                    mt: 'auto',
+                    pt: 0.5
+                  }}
+                >
+                  <CalendarIcon sx={{ fontSize: '0.9rem', mr: 0.5 }} />
+                  {formatDate(suggestion.created_at)}
+                </Box>
+              </CardContent>
+              
+              <Divider />
+              
+              <CardActions sx={{ 
+                justifyContent: 'center',
+                padding: 1,
+                gap: 1
+              }}>
+                <Tooltip title="Visualizar vídeo">
+                  <IconButton
+                    color="primary"
+                    size="small"
+                    onClick={() => handleVideoView(suggestion)}
+                    sx={{
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}
+                  >
+                    <VisibilityIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                
+                {suggestion.status === 'pending' && isAdmin && (
+                  <>
+                    <Tooltip title="Aprovar sugestão">
                       <IconButton 
-                        color="primary" 
-                        size="small" 
-                        onClick={() => handleDeleteClick(suggestion)}
+                        color="success" 
+                        size="small"
+                        onClick={() => handleActionClick(suggestion, 'approve')}
+                        sx={{
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                        }}
                       >
-                        <DeleteIcon fontSize="small" />
+                        <CheckIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    <Tooltip title="Rejeitar sugestão">
+                      <IconButton 
+                        color="error" 
+                        size="small"
+                        onClick={() => handleActionClick(suggestion, 'reject')}
+                        sx={{
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </>
+                )}
+                
+                {(suggestion.status === 'approved' || suggestion.status === 'rejected') && (
+                  <Tooltip title="Excluir sugestão">
+                    <IconButton 
+                      color="primary" 
+                      size="small" 
+                      onClick={() => handleDeleteClick(suggestion)}
+                      sx={{
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </CardActions>
+            </Card>
+          ))}
+        </Box>
+      </Box>
 
       {totalPages > 1 && (
-        <Box display="flex" justifyContent="center">
-          <Pagination 
-            count={totalPages} 
-            page={currentPage} 
-            onChange={handlePageChange} 
-            color="primary"
-            renderItem={(item) => (
-              <PaginationItem
-                components={{
-                  previous: NavigateBeforeIcon,
-                  next: NavigateNextIcon
+        <>
+          {isMobile ? (
+            <Box 
+              display="flex" 
+              justifyContent="space-between" 
+              alignItems="center"
+              mt={3} 
+              mb={2}
+              px={2}
+            >
+              <IconButton
+                onClick={(e) => handlePageChange(e, currentPage > 1 ? currentPage - 1 : 1)}
+                disabled={currentPage === 1}
+                sx={{
+                  color: 'primary.main',
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
                 }}
-                {...item}
+                size="small"
+              >
+                <NavigateBeforeIcon />
+              </IconButton>
+              
+              <Typography variant="body2" color="text.secondary">
+                Página {currentPage} de {totalPages}
+              </Typography>
+              
+              <IconButton
+                onClick={(e) => handlePageChange(e, currentPage < totalPages ? currentPage + 1 : totalPages)}
+                disabled={currentPage === totalPages}
+                sx={{
+                  color: 'primary.main',
+                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                }}
+                size="small"
+              >
+                <NavigateNextIcon />
+              </IconButton>
+            </Box>
+          ) : (
+            <Box 
+              display="flex" 
+              justifyContent="center" 
+              mt={4} 
+              mb={2}
+              sx={{
+                '.MuiPagination-ul': {
+                  flexWrap: 'nowrap',
+                  gap: 0,
+                  margin: 0,
+                  padding: 0,
+                  width: '100%',
+                  justifyContent: 'center'
+                },
+                width: '100%',
+                overflow: 'hidden'
+              }}
+            >
+              <Pagination 
+                count={totalPages} 
+                page={currentPage} 
+                onChange={handlePageChange} 
+                color="primary"
+                size="small"
+                siblingCount={1}
+                boundaryCount={1}
+                renderItem={(item) => (
+                  <PaginationItem
+                    components={{
+                      previous: NavigateBeforeIcon,
+                      next: NavigateNextIcon
+                    }}
+                    {...item}
+                    sx={{
+                      fontWeight: item.selected ? 'bold' : 'normal',
+                      backgroundColor: item.selected ? 'primary.main !important' : 'transparent',
+                      color: item.selected ? 'white !important' : 'primary.main',
+                      border: item.type === 'page' ? `1px solid ${
+                        item.selected 
+                          ? 'primary.main' 
+                          : theme.palette.divider
+                      }` : 'none',
+                      boxShadow: item.selected ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
+                      minWidth: { xs: '22px', sm: '36px' },
+                      height: { xs: '22px', sm: '36px' },
+                      borderRadius: { xs: '2px', sm: '8px' },
+                      padding: { xs: 0, sm: '0 6px' },
+                      margin: { xs: '0 1px', sm: '0 4px' },
+                      fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                      lineHeight: { xs: '22px', sm: '36px' },
+                      '& .MuiSvgIcon-root': {
+                        fontSize: { xs: '0.8rem', sm: '1.25rem' }
+                      },
+                      '&:hover': {
+                        backgroundColor: item.selected ? 'primary.dark !important' : alpha(theme.palette.primary.main, 0.1)
+                      }
+                    }}
+                    data-testid={`page-${item.page}`}
+                    data-variant={item.selected ? 'contained' : 'outlined'}
+                  />
+                )}
               />
-            )}
-          />
-        </Box>
+            </Box>
+          )}
+        </>
       )}
 
       <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog}>
@@ -325,12 +520,6 @@ function SuggestionsList({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button 
-            onClick={handleCloseDeleteDialog}
-            color="error"
-          >
-            Cancelar
-          </Button>
           <Button 
             onClick={handleConfirmDelete} 
             color="error"
@@ -422,13 +611,6 @@ function SuggestionsList({
         </DialogContent>
         <DialogActions>
           <Button 
-            onClick={handleCloseActionDialog}
-            color="error"
-            disabled={loading}
-          >
-            Cancelar
-          </Button>
-          <Button 
             onClick={handleConfirmAction} 
             color={actionType === 'approve' ? 'success' : 'error'} 
             variant="contained"
@@ -449,8 +631,28 @@ function SuggestionsList({
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>
-          {selectedSuggestion?.title || "Visualizar Vídeo"}
+        <DialogTitle 
+          sx={{ 
+            pb: 1,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            pr: 6,
+            position: 'relative'
+          }}
+        >
+          <Typography 
+            variant="h6" 
+            component="div" 
+            sx={{ 
+              display: 'block',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}
+            title={selectedSuggestion?.title || "Visualizar Vídeo"}
+          >
+            {selectedSuggestion?.title || "Visualizar Vídeo"}
+          </Typography>
           <IconButton
             aria-label="close"
             onClick={handleCloseVideoDialog}
@@ -465,42 +667,78 @@ function SuggestionsList({
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pt: 3 }}>
           {selectedSuggestion && (
             <Box sx={{ 
-              mb: 2, 
+              mt: 2,
+              mb: 3, 
               display: 'flex', 
+              flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: 'space-between', 
-              alignItems: 'center',
-              flexWrap: 'wrap', 
-              gap: 1,
-              backgroundColor: theme.palette.background.paper,
+              alignItems: { xs: 'flex-start', sm: 'center' },
+              gap: 2,
+              backgroundColor: alpha(theme.palette.background.paper, 0.7),
               p: 2,
               borderRadius: 1,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              border: `1px solid ${theme.palette.divider}`
             }}>
-              <Box>
-                <Typography variant="subtitle1" fontWeight="bold" color="primary">
-                  {selectedSuggestion.title}
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
-                  <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+              <Box sx={{ width: '100%' }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center',
+                  mb: 1
+                }}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      mr: 1,
+                      fontWeight: 'medium',
+                      color: 'text.secondary'
+                    }}
+                  >
                     Status:
                   </Typography>
                   {getStatusChip(selectedSuggestion.status)}
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  Adicionado em: {formatDate(selectedSuggestion.created_at)}
-                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center'
+                }}>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      mr: 1,
+                      fontWeight: 'medium',
+                      color: 'text.secondary'
+                    }}
+                  >
+                    Adicionado em:
+                  </Typography>
+                  <Typography variant="body2">
+                    {formatDate(selectedSuggestion.created_at)}
+                  </Typography>
+                </Box>
               </Box>
               
               <Button 
                 color="error" 
                 variant="contained"
                 size="small"
-                startIcon={<YouTubeIcon />}
+                startIcon={<YouTubeIcon fontSize="small" />}
                 onClick={() => window.open(`https://www.youtube.com/watch?v=${selectedSuggestion.youtube_id}`, '_blank')}
-                sx={{ borderRadius: 2 }}
+                sx={{ 
+                  borderRadius: 2,
+                  alignSelf: { xs: 'stretch', sm: 'center' },
+                  fontSize: { xs: '0.75rem', sm: '0.7rem' },
+                  py: { xs: 0.5, sm: 0.3 },
+                  px: { xs: 1.5, sm: 1 },
+                  minWidth: 'auto',
+                  lineHeight: { sm: 1 },
+                  '& .MuiButton-startIcon': {
+                    marginRight: { sm: '4px' }
+                  }
+                }}
               >
                 Abrir no YouTube
               </Button>

@@ -24,7 +24,6 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ThumbUpIcon from '@mui/icons-material/ThumbUp';
 import YouTubeIcon from '@mui/icons-material/YouTube';
-import SendIcon from '@mui/icons-material/Send';
 
 function SuggestionForm({ open, onClose }: SuggestionFormProps) {
   const [youtubeUrl, setYoutubeUrl] = useState('');
@@ -213,7 +212,14 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
               </Alert>
             )}
 
-            <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: theme.palette.grey[50], borderRadius: 2 }}>
+            <Paper elevation={0} sx={{ 
+              p: 2, 
+              mb: 3,
+              bgcolor: theme.palette.mode === 'dark' 
+                ? theme.palette.background.paper 
+                : theme.palette.grey[50], 
+              borderRadius: 2 
+            }}>
               <Typography variant="body2" fontWeight="medium" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <YouTubeIcon fontSize="small" color="error" />
                 Link do YouTube *
@@ -284,7 +290,13 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
             </Paper>
             
             {preview && (
-              <Paper elevation={0} sx={{ p: 2, bgcolor: theme.palette.grey[50], borderRadius: 2 }}>
+              <Paper elevation={0} sx={{ 
+                p: 2, 
+                bgcolor: theme.palette.mode === 'dark' 
+                  ? theme.palette.background.paper 
+                  : theme.palette.grey[50], 
+                borderRadius: 2 
+              }}>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
                     Título da música * 
@@ -308,7 +320,8 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
                   borderRadius: 2,
                   overflow: 'hidden',
                   border: '1px solid',
-                  borderColor: theme.palette.divider
+                  borderColor: theme.palette.divider,
+                  bgcolor: theme.palette.background.paper
                 }}>
                   <Box 
                     component="img"
@@ -319,7 +332,8 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
                       height: 'auto',
                       display: 'block',
                       maxHeight: '200px',
-                      objectFit: 'cover'
+                      objectFit: 'cover',
+                      backgroundColor: theme.palette.background.paper
                     }}
                   />
                 </Box>
@@ -332,13 +346,21 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
                   mb: 1
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <VisibilityIcon fontSize="small" color="action" />
+                    <VisibilityIcon fontSize="small" sx={{ 
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.common.white 
+                        : '#8B4513'
+                    }} />
                     <Typography variant="body2" fontWeight="medium">
                       {formatNumber(preview.visualizacoes || preview.views || 0)}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <ThumbUpIcon fontSize="small" color="primary" />
+                    <ThumbUpIcon fontSize="small" sx={{ 
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.common.white 
+                        : theme.palette.primary.main 
+                    }} />
                     <Typography variant="body2" fontWeight="medium">
                       {formatNumber(preview.likes || 0)}
                     </Typography>
@@ -358,7 +380,6 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
             variant="contained"
             disabled={loadingSubmit}
             fullWidth
-            startIcon={<SendIcon />}
             sx={{
               borderRadius: 1.5,
               py: 1.2,

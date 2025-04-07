@@ -131,7 +131,7 @@ function SuggestionsPage() {
                 fontWeight: 'medium'
               }}
             >
-              Sugerir Música
+              Sugerir
             </Button>
           )}
         </Box>

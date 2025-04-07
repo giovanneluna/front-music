@@ -72,8 +72,16 @@ function Home() {
     setShowSuggestionForm(false);
   };
 
-  const handleMusicAdded = useCallback(() => {
-    fetchTopMusics(true);
+  const handleMusicAdded = useCallback(async () => {
+    try {
+      const response = await getTopMusics(5);
+      setTopMusics(response.data);
+      return true;
+    } catch (err) {
+      console.error('Erro ao recarregar lista:', err);
+      fetchTopMusics(true);
+      return false;
+    }
   }, [fetchTopMusics]);
 
   const profileImageUrl = 'images/foto-perfil.jpg';
@@ -117,12 +125,14 @@ function Home() {
             transition: 'opacity 0.3s ease-in-out',
             visibility: loading && !isLoggingOut ? 'hidden' : 'visible'
           }}>
-            <MusicList 
-              topMusics={topMusics}
-              onSuggestMusic={handleSuggestMusic}
-              onMusicAdded={handleMusicAdded}
-              skipLoading={firstRenderDone.current || isLoggingOut}
-            />
+            {topMusics.length > 0 && (
+              <MusicList 
+                topMusics={topMusics}
+                onSuggestMusic={handleSuggestMusic}
+                onMusicAdded={handleMusicAdded}
+                skipLoading={firstRenderDone.current || isLoggingOut}
+              />
+            )}
           </Box>
         )}
       </Box>

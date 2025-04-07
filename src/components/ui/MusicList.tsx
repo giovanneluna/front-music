@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Box, Typography, Divider, Button, FormControl, Select, MenuItem, InputLabel, SelectChangeEvent, Skeleton } from '@mui/material';
+import { Box, Typography, Divider, Button, FormControl, Select, MenuItem, InputLabel, SelectChangeEvent, Skeleton, useMediaQuery, useTheme } from '@mui/material';
 import MusicCard from './MusicCard';
 import { Music } from '../../types';
 import { getMusics, musicService } from '../../services/musicService';
@@ -82,6 +82,8 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
   const updateInProgress = useRef(false);
   const lastCacheKey = useRef<string | null>(null);
   const isChangingPageRef = useRef(false);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
   const { 
     currentPage, 
@@ -109,6 +111,11 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
   const fetchMusics = useCallback(async (currentPage: number, currentSortOrder: 'desc' | 'asc', force = false) => {
     if (updateInProgress.current || isLoggingOut) return;
     
+    const currentTopMusicIds = topMusics.map(music => music.id);
+    if (currentTopMusicIds.length === 0 && !force) {
+      return;
+    }
+    
     const cacheKey = getCacheKey(currentPage, currentSortOrder);
     lastCacheKey.current = cacheKey;
     
@@ -133,7 +140,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     updateInProgress.current = true;
 
     try {
-      const response = await getMusics(currentPage, 5, currentSortOrder, topMusicIds);
+      const response = await getMusics(currentPage, 5, currentSortOrder, currentTopMusicIds);
       
       if (isLoggingOut) {
         updateInProgress.current = false;
@@ -164,7 +171,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       }
       updateInProgress.current = false;
     }
-  }, [topMusicIds, isCacheValid, getCacheKey, musics, shouldShowLoadingState, isLoggingOut]);
+  }, [topMusics, isCacheValid, getCacheKey, musics, shouldShowLoadingState, isLoggingOut]);
 
   useEffect(() => {
     const isAuthenticated = !!user;
@@ -206,11 +213,13 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
         setTotalPages(cachedPages.current[cacheKey].meta.last_page);
         initialLoadDone.current = true;
       } else {
-        fetchMusics(currentPage, sortOrder);
-        initialLoadDone.current = true;
+        if (topMusicIds.length > 0) {
+          fetchMusics(currentPage, sortOrder);
+          initialLoadDone.current = true;
+        }
       }
     }
-  }, [currentPage, sortOrder, fetchMusics, getCacheKey, skipLoading, isLoggingOut]);
+  }, [currentPage, sortOrder, fetchMusics, getCacheKey, skipLoading, isLoggingOut, topMusicIds]);
 
   useEffect(() => {
     if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
@@ -248,6 +257,27 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     fetchMusics(currentPage, sortOrder, true);
   }, [topMusics, currentPage, sortOrder, fetchMusics, musics, getCacheKey, isLoggingOut]);
 
+  useEffect(() => {
+    if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
+    
+    if (topMusics.length > 0 && musics.length > 0) {
+      const topMusicIds = topMusics.map(music => music.id);
+      const hasDuplication = musics.some(music => topMusicIds.includes(music.id));
+      
+      if (hasDuplication) {
+        if (debounceTimerRef.current) {
+          window.clearTimeout(debounceTimerRef.current);
+        }
+        
+        debounceTimerRef.current = window.setTimeout(() => {
+          fetchMusics(currentPage, sortOrder, true);
+        }, 100);
+      }
+    } else if (topMusics.length > 0 && !updateInProgress.current) {
+      fetchMusics(currentPage, sortOrder, false);
+    }
+  }, [topMusics, fetchMusics, currentPage, sortOrder, isLoggingOut, musics]);
+
   const handlePageChange = useCallback((event: React.MouseEvent<HTMLButtonElement> | null, value: number) => {
     if (event) {
       event.preventDefault();
@@ -260,17 +290,28 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     
     goToPage(value);
     
+    const cacheKey = getCacheKey(value, sortOrder);
+    if (cachedPages.current[cacheKey]) {
+      delete cachedPages.current[cacheKey];
+    }
+    
     setTimeout(() => {
-      const otherMusicsTitleEl = document.getElementById('outras-musicas-title');
-      if (otherMusicsTitleEl) {
-        otherMusicsTitleEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      fetchMusics(value, sortOrder, true);
+      
+      const isMobile = window.innerWidth < 600;
+      
+      if (isMobile) {
+        const otherMusicsTitleEl = document.getElementById('outras-musicas-title');
+        if (otherMusicsTitleEl) {
+          otherMusicsTitleEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
       }
       
       setTimeout(() => {
         isChangingPageRef.current = false;
       }, 300);
     }, 100);
-  }, [currentPage, goToPage]);
+  }, [currentPage, goToPage, getCacheKey, sortOrder, fetchMusics]);
 
   const handleSortChange = useCallback((event: SelectChangeEvent<string>) => {
     setSortOrder(event.target.value as 'desc' | 'asc');
@@ -287,20 +328,49 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     setDeleteModalOpen(true);
   }, []);
   
+  const handleAddMusic = useCallback(() => {
+    setSelectedMusic(undefined);
+    setModalOpen(true);
+  }, []);
+  
+  const handleModalClose = useCallback(() => {
+    setModalOpen(false);
+    setSelectedMusic(undefined);
+  }, []);
+  
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteModalOpen(false);
+    setMusicToDelete(undefined);
+  }, []);
+
   const forceFullUpdate = useCallback(async () => {
     try {
-      const cacheKey = getCacheKey(currentPage, sortOrder);
-      delete cachedPages.current[cacheKey];
+      Object.keys(cachedPages.current).forEach(key => {
+        delete cachedPages.current[key];
+      });
       
       await fetchMusics(currentPage, sortOrder, true);
-      
-      if (onMusicAdded) {
-        onMusicAdded();
-      }
     } catch (error) {
       console.error('Error updating music list:', error);
     }
-  }, [fetchMusics, currentPage, sortOrder, onMusicAdded, getCacheKey]);
+  }, [fetchMusics, currentPage, sortOrder]);
+
+  const handleMusicSaved = useCallback(async () => {
+    try {
+      setModalOpen(false);
+      setSelectedMusic(undefined);
+      
+      if (onMusicAdded) {
+        await onMusicAdded();
+      }
+      
+      setTimeout(() => {
+        forceFullUpdate();
+      }, 300);
+    } catch (error) {
+      console.error('Erro ao recarregar lista:', error);
+    }
+  }, [forceFullUpdate, onMusicAdded]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!musicToDelete) return;
@@ -325,34 +395,6 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       setDeleteLoading(false);
     }
   }, [musicToDelete, forceFullUpdate]);
-  
-  const handleDeleteCancel = useCallback(() => {
-    setDeleteModalOpen(false);
-    setMusicToDelete(undefined);
-  }, []);
-  
-  const handleAddMusic = useCallback(() => {
-    setSelectedMusic(undefined);
-    setModalOpen(true);
-  }, []);
-  
-  const handleModalClose = useCallback(() => {
-    setModalOpen(false);
-    setSelectedMusic(undefined);
-  }, []);
-  
-  const handleMusicSaved = useCallback(async () => {
-    try {
-      setModalOpen(false);
-      setSelectedMusic(undefined);
-      
-      setTimeout(() => {
-        forceFullUpdate();
-      }, 50);
-    } catch (error) {
-      console.error('Erro ao recarregar lista:', error);
-    }
-  }, [forceFullUpdate]);
 
   const renderedTopMusics = useMemo(() => {
     if (topMusics.length === 0) return null;
@@ -435,6 +477,67 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
   const renderPagination = useMemo(() => {
     if (totalPages <= 1) return null;
     
+    if (isMobile) {
+      return (
+        <Box 
+          display="flex" 
+          justifyContent="space-between" 
+          alignItems="center"
+          mt={3} 
+          mb={2}
+          px={2}
+        >
+          <Button
+            variant="outlined"
+            disabled={!hasPrevPage}
+            onClick={(e) => handlePageChange(e, currentPage - 1)}
+            sx={{ 
+              minWidth: '40px',
+              width: '40px', 
+              height: '40px',
+              borderRadius: '8px',
+              padding: 0,
+              color: 'primary.main',
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <NavigateBeforeIcon fontSize="small" />
+          </Button>
+          
+          <Typography variant="body2" color="text.secondary">
+            Página {currentPage} de {totalPages}
+          </Typography>
+          
+          <Button
+            variant="outlined"
+            disabled={!hasNextPage}
+            onClick={(e) => handlePageChange(e, currentPage + 1)}
+            sx={{ 
+              minWidth: '40px',
+              width: '40px', 
+              height: '40px',
+              borderRadius: '8px',
+              padding: 0,
+              color: 'primary.main',
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <NavigateNextIcon fontSize="small" />
+          </Button>
+        </Box>
+      );
+    }
+    
     const buttons = [];
     
     buttons.push(
@@ -458,10 +561,12 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     );
     
     for (const pageNum of visiblePages) {
+      const isCurrentPage = pageNum === currentPage;
+      
       buttons.push(
         <Button
           key={pageNum}
-          variant={pageNum === currentPage ? 'contained' : 'outlined'}
+          variant={isCurrentPage ? 'contained' : 'outlined'}
           color="primary"
           onClick={(e) => handlePageChange(e, pageNum)}
           sx={{ 
@@ -473,7 +578,18 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
             alignItems: 'center',
             justifyContent: 'center',
             padding: '6px 12px',
-            lineHeight: 1
+            lineHeight: 1,
+            fontWeight: isCurrentPage ? 'bold' : 'normal',
+            backgroundColor: isCurrentPage ? 'primary.main !important' : 'transparent',
+            color: isCurrentPage ? 'white !important' : 'primary.main',
+            border: isCurrentPage ? '2px solid primary.dark' : undefined,
+            boxShadow: isCurrentPage ? '0 0 5px rgba(0,0,0,0.3)' : 'none',
+            transform: isCurrentPage ? 'scale(1.1)' : 'scale(1)',
+            transition: 'all 0.2s ease',
+            '&:hover': {
+              backgroundColor: isCurrentPage ? 'primary.dark !important' : undefined,
+              color: isCurrentPage ? 'white !important' : undefined,
+            }
           }}
         >
           {pageNum}
@@ -506,7 +622,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
         {buttons}
       </Box>
     );
-  }, [totalPages, currentPage, hasNextPage, hasPrevPage, visiblePages, handlePageChange]);
+  }, [totalPages, currentPage, hasNextPage, hasPrevPage, visiblePages, handlePageChange, isMobile]);
 
   const renderSkeletons = useMemo(() => {
     return Array(5).fill(0).map((_, index) => (
@@ -595,9 +711,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
             </Box>
           ))
         ) : (
-          <Typography variant="subtitle1" sx={{ gridColumn: 'span 5', textAlign: 'center', py: 4 }}>
-            Nenhuma música encontrada.
-          </Typography>
+          renderSkeletons
         )}
       </Box>
       

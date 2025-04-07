@@ -25,6 +25,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import { Music } from '../../types';
 import { musicService } from '../../services/musicService';
 import { validateYoutubeUrl } from '../../services/suggestionService';
+import { alpha } from '@mui/material/styles';
 
 interface MusicFormModalProps {
   open: boolean;
@@ -259,10 +260,12 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
         color: 'white',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        mb: 1,
+        pb: 2
       }}>
         <Box display="flex" alignItems="center" gap={1}>
-          <YouTubeIcon />
+          <YouTubeIcon sx={{ color: "white" }} />
           <Typography variant="h6">
             {isEditMode ? 'Editar Música' : 'Adicionar Música'}
           </Typography>
@@ -281,7 +284,7 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 3 }}>
+      <DialogContent sx={{ pt: 4 }}>
         {error && (
           <Alert severity="error" sx={{ mb: 3, borderRadius: 2, mt: 1 }}>
             {error}
@@ -311,14 +314,35 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
 
         <Box component="form" onSubmit={handleSubmit}>
           {!isEditMode && (
-            <Paper elevation={0} sx={{ p: 2, mb: 3, bgcolor: theme => theme.palette.grey[50], borderRadius: 2 }}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 2, 
+                mb: 3, 
+                bgcolor: theme => theme.palette.mode === 'dark' 
+                  ? alpha(theme.palette.background.paper, 0.3)
+                  : theme.palette.grey[50], 
+                borderRadius: 2,
+                border: theme => `1px solid ${
+                  theme.palette.mode === 'dark' 
+                    ? alpha(theme.palette.common.white, 0.15)
+                    : theme.palette.divider
+                }`
+              }}
+            >
               <Typography variant="body2" fontWeight="medium" sx={{ 
                 mb: 1.5, 
                 display: 'flex', 
                 alignItems: 'center', 
-                gap: 1
+                gap: 1,
+                color: theme => theme.palette.text.primary
               }}>
-                <YouTubeIcon fontSize="small" color="error" />
+                <YouTubeIcon 
+                  fontSize="small" 
+                  sx={{ 
+                    color: theme => theme.palette.error.main 
+                  }}
+                />
                 URL do YouTube
               </Typography>
               
@@ -334,12 +358,36 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                     InputProps={{
                       sx: { 
                         borderRadius: 2,
-                        height: '40px'
+                        height: '40px',
+                        bgcolor: theme => theme.palette.background.paper,
+                        color: theme => theme.palette.text.primary,
+                        '.MuiInputBase-input': {
+                          color: theme => theme.palette.text.primary,
+                          '&::placeholder': {
+                            color: theme => theme.palette.mode === 'dark' 
+                              ? theme.palette.grey[500] 
+                              : theme.palette.text.secondary,
+                            opacity: 1
+                          }
+                        }
                       }
                     }}
                     size="small"
                   />
-                  <Typography variant="caption" color={getFieldError('youtube_id') ? "error" : "text.secondary"} sx={{ display: 'block', mt: 1, ml: 1 }}>
+                  <Typography 
+                    variant="caption" 
+                    color={getFieldError('youtube_id') ? "error" : "text.secondary"} 
+                    sx={{ 
+                      display: 'block', 
+                      mt: 1, 
+                      ml: 1,
+                      color: theme => getFieldError('youtube_id')
+                        ? theme.palette.error.main
+                        : theme.palette.mode === 'dark'
+                          ? theme.palette.grey[400]
+                          : theme.palette.text.secondary
+                    }}
+                  >
                     {getFieldError('youtube_id') || "Cole a URL do YouTube para obter automaticamente as informações do vídeo"}
                   </Typography>
                 </Box>
@@ -371,15 +419,37 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
           )}
 
           <Stack spacing={3}>
-            <Paper elevation={0} sx={{ p: 2, bgcolor: theme => theme.palette.grey[50], borderRadius: 2 }}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 2, 
+                bgcolor: theme => theme.palette.mode === 'dark' 
+                  ? alpha(theme.palette.background.paper, 0.3)
+                  : theme.palette.grey[50], 
+                borderRadius: 2,
+                border: theme => `1px solid ${
+                  theme.palette.mode === 'dark' 
+                    ? alpha(theme.palette.common.white, 0.15)
+                    : theme.palette.divider
+                }`
+              }}
+            >
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" fontWeight="medium" sx={{ 
                   mb: 1.5, 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 1
+                  gap: 1,
+                  color: theme => theme.palette.text.primary
                 }}>
-                  <LinkIcon fontSize="small" color="primary" />
+                  <LinkIcon 
+                    fontSize="small" 
+                    sx={{ 
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.common.white 
+                        : theme.palette.primary.main 
+                    }}
+                  />
                   Título
                 </Typography>
                 <TextField
@@ -393,7 +463,21 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                   error={!!getFieldError('title')}
                   helperText={getFieldError('title')}
                   InputProps={{
-                    sx: { borderRadius: 2 }
+                    sx: { 
+                      borderRadius: 2,
+                      bgcolor: theme => theme.palette.background.paper,
+                      color: theme => theme.palette.text.primary,
+                      '.MuiInputBase-input': {
+                        color: theme => theme.palette.text.primary
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: {
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.grey[400] 
+                        : theme.palette.text.secondary
+                    }
                   }}
                   size="small"
                 />
@@ -409,9 +493,17 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                     mb: 1.5, 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: 1
+                    gap: 1,
+                    color: theme => theme.palette.text.primary
                   }}>
-                    <VisibilityIcon fontSize="small" color="action" />
+                    <VisibilityIcon 
+                      fontSize="small" 
+                      sx={{ 
+                        color: theme => theme.palette.mode === 'dark' 
+                          ? theme.palette.common.white 
+                          : theme.palette.primary.main 
+                      }}
+                    />
                     Visualizações
                   </Typography>
                   <TextField
@@ -426,14 +518,35 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                     error={!!getFieldError('views')}
                     helperText={getFieldError('views')}
                     InputProps={{
-                      sx: { borderRadius: 2 },
+                      sx: { 
+                        borderRadius: 2,
+                        bgcolor: theme => alpha(theme.palette.background.paper, 0.9),
+                        color: theme => theme.palette.text.primary,
+                        '.MuiInputBase-input': {
+                          color: theme => theme.palette.mode === 'dark' 
+                            ? theme.palette.common.white
+                            : theme.palette.text.primary,
+                          fontWeight: 'medium'
+                        }
+                      },
                       endAdornment: formData.views > 0 && (
                         <InputAdornment position="end">
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{
+                            color: theme => theme.palette.mode === 'dark' 
+                              ? theme.palette.common.white
+                              : theme.palette.text.secondary
+                          }}>
                             {formatNumber(formData.views)}
                           </Typography>
                         </InputAdornment>
                       )
+                    }}
+                    InputLabelProps={{
+                      sx: {
+                        color: theme => theme.palette.mode === 'dark' 
+                          ? theme.palette.grey[300] 
+                          : theme.palette.text.secondary
+                      }
                     }}
                     size="small"
                   />
@@ -444,9 +557,17 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                     mb: 1.5, 
                     display: 'flex', 
                     alignItems: 'center', 
-                    gap: 1
+                    gap: 1,
+                    color: theme => theme.palette.text.primary
                   }}>
-                    <ThumbUpIcon fontSize="small" color="primary" />
+                    <ThumbUpIcon 
+                      fontSize="small" 
+                      sx={{ 
+                        color: theme => theme.palette.mode === 'dark' 
+                          ? theme.palette.common.white 
+                          : theme.palette.primary.main 
+                      }}
+                    />
                     Likes
                   </Typography>
                   <TextField
@@ -461,14 +582,35 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                     error={!!getFieldError('likes')}
                     helperText={getFieldError('likes')}
                     InputProps={{
-                      sx: { borderRadius: 2 },
+                      sx: { 
+                        borderRadius: 2,
+                        bgcolor: theme => alpha(theme.palette.background.paper, 0.9),
+                        color: theme => theme.palette.text.primary,
+                        '.MuiInputBase-input': {
+                          color: theme => theme.palette.mode === 'dark' 
+                            ? theme.palette.common.white
+                            : theme.palette.text.primary,
+                          fontWeight: 'medium'
+                        }
+                      },
                       endAdornment: formData.likes > 0 && (
                         <InputAdornment position="end">
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" sx={{
+                            color: theme => theme.palette.mode === 'dark' 
+                              ? theme.palette.common.white
+                              : theme.palette.text.secondary
+                          }}>
                             {formatNumber(formData.likes)}
                           </Typography>
                         </InputAdornment>
                       )
+                    }}
+                    InputLabelProps={{
+                      sx: {
+                        color: theme => theme.palette.mode === 'dark' 
+                          ? theme.palette.grey[300] 
+                          : theme.palette.text.secondary
+                      }
                     }}
                     size="small"
                   />
@@ -476,15 +618,35 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
               </Box>
             </Paper>
 
-            <Paper elevation={0} sx={{ p: 2, bgcolor: theme => theme.palette.grey[50], borderRadius: 2 }}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 2, 
+                bgcolor: theme => theme.palette.mode === 'dark' 
+                  ? alpha(theme.palette.background.paper, 0.3)
+                  : theme.palette.grey[50], 
+                borderRadius: 2,
+                border: theme => `1px solid ${
+                  theme.palette.mode === 'dark' 
+                    ? alpha(theme.palette.common.white, 0.15)
+                    : theme.palette.divider
+                }`
+              }}
+            >
               <Box sx={{ mb: 2 }}>
                 <Typography variant="body2" fontWeight="medium" sx={{ 
                   mb: 1.5, 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 1
+                  gap: 1,
+                  color: theme => theme.palette.text.primary
                 }}>
-                  <YouTubeIcon fontSize="small" color="error" />
+                  <YouTubeIcon 
+                    fontSize="small" 
+                    sx={{ 
+                      color: theme => theme.palette.error.main 
+                    }}
+                  />
                   YouTube ID
                 </Typography>
                 <TextField
@@ -498,7 +660,21 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                   error={!!getFieldError('youtube_id')}
                   helperText={getFieldError('youtube_id')}
                   InputProps={{
-                    sx: { borderRadius: 2 }
+                    sx: { 
+                      borderRadius: 2,
+                      bgcolor: theme => theme.palette.background.paper,
+                      color: theme => theme.palette.text.primary,
+                      '.MuiInputBase-input': {
+                        color: theme => theme.palette.text.primary
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: {
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.grey[400] 
+                        : theme.palette.text.secondary
+                    }
                   }}
                   size="small"
                 />
@@ -509,9 +685,17 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                   mb: 1.5, 
                   display: 'flex', 
                   alignItems: 'center', 
-                  gap: 1
+                  gap: 1,
+                  color: theme => theme.palette.text.primary
                 }}>
-                  <ImageIcon fontSize="small" color="primary" />
+                  <ImageIcon 
+                    fontSize="small" 
+                    sx={{ 
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.common.white 
+                        : theme.palette.primary.main 
+                    }}
+                  />
                   Thumbnail
                 </Typography>
                 <TextField
@@ -525,7 +709,21 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                   error={!!getFieldError('thumbnail')}
                   helperText={getFieldError('thumbnail')}
                   InputProps={{
-                    sx: { borderRadius: 2 }
+                    sx: { 
+                      borderRadius: 2,
+                      bgcolor: theme => theme.palette.background.paper,
+                      color: theme => theme.palette.text.primary,
+                      '.MuiInputBase-input': {
+                        color: theme => theme.palette.text.primary
+                      }
+                    }
+                  }}
+                  InputLabelProps={{
+                    sx: {
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.grey[400] 
+                        : theme.palette.text.secondary
+                    }
                   }}
                   size="small"
                 />
@@ -546,7 +744,13 @@ export function MusicFormModal({ open, onClose, music, onSave }: MusicFormModalP
                     p: 0.5, 
                     maxWidth: '320px',
                     overflow: 'hidden',
-                    borderRadius: 3
+                    borderRadius: 3,
+                    backgroundColor: theme => theme.palette.mode === 'dark' 
+                      ? alpha(theme.palette.background.paper, 0.5)
+                      : theme.palette.background.paper,
+                    border: theme => theme.palette.mode === 'dark' 
+                      ? `1px solid ${alpha(theme.palette.common.white, 0.2)}`
+                      : 'none',
                   }}
                 >
                   <img

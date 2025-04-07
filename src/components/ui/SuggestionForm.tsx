@@ -311,7 +311,8 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
                   borderRadius: 2,
                   overflow: 'hidden',
                   border: '1px solid',
-                  borderColor: 'divider'
+                  borderColor: 'divider',
+                  bgcolor: 'background.paper'
                 }}>
                   <Box 
                     component="img"
@@ -335,13 +336,21 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
                   mb: 1
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <VisibilityIcon fontSize="small" color="action" />
+                    <VisibilityIcon fontSize="small" sx={{ 
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.common.white 
+                        : '#8B4513'
+                    }} />
                     <Typography variant="body2" fontWeight="medium">
                       {formatNumber(preview.visualizacoes || 0)} visualizações
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <ThumbUpIcon fontSize="small" color="primary" />
+                    <ThumbUpIcon fontSize="small" sx={{ 
+                      color: theme => theme.palette.mode === 'dark' 
+                        ? theme.palette.common.white 
+                        : theme.palette.primary.main 
+                    }} />
                     <Typography variant="body2" fontWeight="medium">
                       {formatNumber(preview.likes || 0)} curtidas
                     </Typography>
