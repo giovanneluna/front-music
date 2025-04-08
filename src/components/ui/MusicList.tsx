@@ -13,42 +13,14 @@ import { usePagination } from '../../hooks/usePagination';
 
 const MusicCardSkeleton = () => {
   return (
-    <Box 
-      sx={{ 
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-        bgcolor: 'background.paper',
-      }}
-    >
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.12)', bgcolor: 'background.paper' }}>
       <Box sx={{ position: 'relative', paddingTop: '100%', width: '100%' }}>
-        <Skeleton 
-          variant="rectangular" 
-          sx={{ 
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%', 
-            height: '100%',
-            borderRadius: '12px 12px 0 0',
-          }} 
-          animation="wave"
-        />
+        <Skeleton variant="rectangular" sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: '12px 12px 0 0' }} animation="wave" />
       </Box>
-      
       <Box sx={{ p: 1.5, height: '100px', position: 'relative' }}>
         <Skeleton variant="text" sx={{ fontSize: '0.9rem', mb: 0.5, width: '100%', borderRadius: '8px' }} animation="wave" />
         <Skeleton variant="text" sx={{ fontSize: '0.8rem', width: '80%', mb: 2.5, borderRadius: '8px' }} animation="wave" />
-        
-        <Box sx={{ 
-          position: 'absolute',
-          bottom: 12,
-          left: 12,
-          width: '80px'
-        }}>
+        <Box sx={{ position: 'absolute', bottom: 12, left: 12, width: '80px' }}>
           <Skeleton variant="text" sx={{ fontSize: '0.8rem', width: '100%', borderRadius: '8px' }} animation="wave" />
         </Box>
       </Box>
@@ -63,25 +35,18 @@ interface MusicListProps {
   skipLoading?: boolean;
 }
 
-const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = false }: MusicListProps) => {
+const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded = () => {}, skipLoading = false }: MusicListProps) => {
   const [loading, setLoading] = useState(false);
   const [musics, setMusics] = useState<Music[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const { user, isLoggingOut } = useAuth();
-  const musicContainerRef = useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMusic, setSelectedMusic] = useState<Music | undefined>(undefined);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [musicToDelete, setMusicToDelete] = useState<Music | undefined>(undefined);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const cachedPages = useRef<Record<string, {data: Music[], meta: any, timestamp: number}>>({});
-  const debounceTimerRef = useRef<number | null>(null);
-  const initialLoadDone = useRef(false);
-  const lastAuthState = useRef<boolean | null>(null);
-  const updateInProgress = useRef(false);
-  const lastCacheKey = useRef<string | null>(null);
-  const isChangingPageRef = useRef(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   
@@ -93,190 +58,49 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     visiblePages 
   } = usePagination(totalPages);
 
-  const shouldShowLoadingState = useCallback(() => {
-    return !skipLoading && !isLoggingOut;
-  }, [skipLoading, isLoggingOut]);
-
   const topMusicIds = useMemo(() => topMusics.map(music => music.id), [topMusics]);
 
-  const isCacheValid = useCallback((timestamp: number) => {
-    const CACHE_DURATION = 30 * 60 * 1000;
-    return Date.now() - timestamp < CACHE_DURATION;
-  }, []);
-
-  const getCacheKey = useCallback((currentPage: number, currentSortOrder: 'desc' | 'asc') => {
-    return `${currentPage}-${currentSortOrder}-${topMusicIds.join(',')}`;
+  const getCacheKey = useCallback((page: number, order: 'desc' | 'asc') => {
+    return `${page}-${order}-${topMusicIds.join(',')}`;
   }, [topMusicIds]);
 
-  const fetchMusics = useCallback(async (currentPage: number, currentSortOrder: 'desc' | 'asc', force = false) => {
-    if (updateInProgress.current || isLoggingOut) return;
-    
-    const currentTopMusicIds = topMusics.map(music => music.id);
-    if (currentTopMusicIds.length === 0 && !force) {
-      return;
-    }
-    
-    const cacheKey = getCacheKey(currentPage, currentSortOrder);
-    lastCacheKey.current = cacheKey;
-    
-    if (!force && cachedPages.current[cacheKey] && isCacheValid(cachedPages.current[cacheKey].timestamp)) {
-      if (JSON.stringify(musics) !== JSON.stringify(cachedPages.current[cacheKey].data)) {
-        setMusics(cachedPages.current[cacheKey].data);
-        setTotalPages(cachedPages.current[cacheKey].meta.last_page);
-      }
-      return;
-    }
-    
-    if (cachedPages.current[cacheKey]?.data) {
+  const fetchMusics = useCallback(async (page: number, order: 'desc' | 'asc', force = false) => {
+    if (isLoggingOut) return;
+
+    const cacheKey = getCacheKey(page, order);
+    if (!force && cachedPages.current[cacheKey]) {
       setMusics(cachedPages.current[cacheKey].data);
       setTotalPages(cachedPages.current[cacheKey].meta.last_page);
-    }
-    
-    const shouldShowLoading = shouldShowLoadingState() && !cachedPages.current[cacheKey]?.data;
-    if (shouldShowLoading) {
-      setLoading(true);
-    }
-
-    updateInProgress.current = true;
-
-    try {
-      const response = await getMusics(currentPage, 5, currentSortOrder, currentTopMusicIds);
-      
-      if (isLoggingOut) {
-        updateInProgress.current = false;
-        return;
-      }
-      
-      const dataChanged = JSON.stringify(response.data) !== JSON.stringify(cachedPages.current[cacheKey]?.data);
-      
-      if (dataChanged && lastCacheKey.current === cacheKey) {
-        cachedPages.current[cacheKey] = {
-          data: response.data,
-          meta: response.meta,
-          timestamp: Date.now()
-        };
-        
-        setMusics(response.data);
-        setTotalPages(response.meta.last_page);
-      }
-    } catch (error) {
-      console.error('Failed to fetch musics', error);
-      if (cachedPages.current[cacheKey]) {
-        setMusics(cachedPages.current[cacheKey].data);
-        setTotalPages(cachedPages.current[cacheKey].meta.last_page);
-      }
-    } finally {
-      if (shouldShowLoading) {
-        setLoading(false);
-      }
-      updateInProgress.current = false;
-    }
-  }, [topMusics, isCacheValid, getCacheKey, musics, shouldShowLoadingState, isLoggingOut]);
-
-  useEffect(() => {
-    const isAuthenticated = !!user;
-    
-    if (lastAuthState.current === null) {
-      lastAuthState.current = isAuthenticated;
       return;
     }
 
-    if (lastAuthState.current !== isAuthenticated && !isLoggingOut) {
-      lastAuthState.current = isAuthenticated;
-      
-      const cacheKey = getCacheKey(currentPage, sortOrder);
-      if (cachedPages.current[cacheKey]) {
-        const currentMusicsStr = JSON.stringify(musics);
-        const cachedMusicsStr = JSON.stringify(cachedPages.current[cacheKey].data);
-        
-        if (currentMusicsStr !== cachedMusicsStr) {
-          setMusics(cachedPages.current[cacheKey].data);
-          setTotalPages(cachedPages.current[cacheKey].meta.last_page);
-        }
-      }
-      
-      if (!updateInProgress.current && !isLoggingOut) {
-        setTimeout(() => {
-          fetchMusics(currentPage, sortOrder, true);
-        }, 100);
-      }
-    }
-  }, [user, currentPage, sortOrder, getCacheKey, fetchMusics, musics, isLoggingOut]);
-
-  useEffect(() => {
-    if (isLoggingOut) return;
-    
-    if (!initialLoadDone.current && !updateInProgress.current) {
-      const cacheKey = getCacheKey(currentPage, sortOrder);
-      if (skipLoading && cachedPages.current[cacheKey]?.data) {
-        setMusics(cachedPages.current[cacheKey].data);
-        setTotalPages(cachedPages.current[cacheKey].meta.last_page);
-        initialLoadDone.current = true;
-      } else {
-        if (topMusicIds.length > 0) {
-          fetchMusics(currentPage, sortOrder);
-          initialLoadDone.current = true;
-        }
-      }
-    }
-  }, [currentPage, sortOrder, fetchMusics, getCacheKey, skipLoading, isLoggingOut, topMusicIds]);
-
-  useEffect(() => {
-    if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
-
-    if (debounceTimerRef.current) {
-      window.clearTimeout(debounceTimerRef.current);
+    if (!skipLoading) {
+      setLoading(true);
     }
     
-    debounceTimerRef.current = window.setTimeout(() => {
+    try {
+      const response = await getMusics(page, 5, order, topMusicIds);
+      cachedPages.current[cacheKey] = {
+        data: response.data,
+        meta: response.meta,
+        timestamp: Date.now()
+      };
+      setMusics(response.data);
+      setTotalPages(response.meta.last_page);
+    } catch (error) {
+      console.error('Failed to fetch musics:', error);
+    } finally {
+      if (!skipLoading) {
+        setLoading(false);
+      }
+    }
+  }, [isLoggingOut, topMusicIds, getCacheKey, skipLoading]);
+
+  useEffect(() => {
+    if (!isLoggingOut) {
       fetchMusics(currentPage, sortOrder);
-    }, 300);
-    
-    return () => {
-      if (debounceTimerRef.current) {
-        window.clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, [currentPage, sortOrder, fetchMusics, isLoggingOut]);
-
-  useEffect(() => {
-    if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
-    
-    const cacheKey = getCacheKey(currentPage, sortOrder);
-    const currentCache = cachedPages.current[cacheKey];
-    
-    if (currentCache) {
-      const currentMusicsStr = JSON.stringify(musics);
-      const cachedMusicsStr = JSON.stringify(currentCache.data);
-      
-      if (currentMusicsStr === cachedMusicsStr) {
-        return;
-      }
     }
-    
-    fetchMusics(currentPage, sortOrder, true);
-  }, [topMusics, currentPage, sortOrder, fetchMusics, musics, getCacheKey, isLoggingOut]);
-
-  useEffect(() => {
-    if (isLoggingOut || !initialLoadDone.current || updateInProgress.current) return;
-    
-    if (topMusics.length > 0 && musics.length > 0) {
-      const topMusicIds = topMusics.map(music => music.id);
-      const hasDuplication = musics.some(music => topMusicIds.includes(music.id));
-      
-      if (hasDuplication) {
-        if (debounceTimerRef.current) {
-          window.clearTimeout(debounceTimerRef.current);
-        }
-        
-        debounceTimerRef.current = window.setTimeout(() => {
-          fetchMusics(currentPage, sortOrder, true);
-        }, 100);
-      }
-    } else if (topMusics.length > 0 && !updateInProgress.current) {
-      fetchMusics(currentPage, sortOrder, false);
-    }
-  }, [topMusics, fetchMusics, currentPage, sortOrder, isLoggingOut, musics]);
+  }, [currentPage, sortOrder, fetchMusics, isLoggingOut, skipLoading]);
 
   const handlePageChange = useCallback((event: React.MouseEvent<HTMLButtonElement> | null, value: number) => {
     if (event) {
@@ -284,39 +108,15 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       event.stopPropagation();
     }
     
-    if (value === currentPage || isChangingPageRef.current) return;
-    
-    isChangingPageRef.current = true;
-    
     goToPage(value);
-    
-    const cacheKey = getCacheKey(value, sortOrder);
-    if (cachedPages.current[cacheKey]) {
-      delete cachedPages.current[cacheKey];
-    }
-    
-    setTimeout(() => {
-      fetchMusics(value, sortOrder, true);
-      
-      const isMobile = window.innerWidth < 600;
-      
-      if (isMobile) {
-        const otherMusicsTitleEl = document.getElementById('outras-musicas-title');
-        if (otherMusicsTitleEl) {
-          otherMusicsTitleEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }
-      
-      setTimeout(() => {
-        isChangingPageRef.current = false;
-      }, 300);
-    }, 100);
-  }, [currentPage, goToPage, getCacheKey, sortOrder, fetchMusics]);
+    fetchMusics(value, sortOrder, true);
+  }, [goToPage, sortOrder, fetchMusics]);
 
   const handleSortChange = useCallback((event: SelectChangeEvent<string>) => {
     setSortOrder(event.target.value as 'desc' | 'asc');
     goToPage(1);
-  }, [goToPage]);
+    fetchMusics(1, event.target.value as 'desc' | 'asc', true);
+  }, [goToPage, fetchMusics]);
 
   const handleEditMusic = useCallback((music: Music) => {
     setSelectedMusic(music);
@@ -343,130 +143,70 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     setMusicToDelete(undefined);
   }, []);
 
-  const forceFullUpdate = useCallback(async () => {
-    try {
-      Object.keys(cachedPages.current).forEach(key => {
-        delete cachedPages.current[key];
-      });
-      
-      await fetchMusics(currentPage, sortOrder, true);
-    } catch (error) {
-      console.error('Error updating music list:', error);
-    }
-  }, [fetchMusics, currentPage, sortOrder]);
-
   const handleMusicSaved = useCallback(async () => {
-    try {
-      setModalOpen(false);
-      setSelectedMusic(undefined);
-      
-      if (onMusicAdded) {
-        await onMusicAdded();
-      }
-      
-      setTimeout(() => {
-        forceFullUpdate();
-      }, 300);
-    } catch (error) {
-      console.error('Erro ao recarregar lista:', error);
+    setModalOpen(false);
+    setSelectedMusic(undefined);
+    
+    if (onMusicAdded) {
+      await onMusicAdded();
     }
-  }, [forceFullUpdate, onMusicAdded]);
+    
+    await fetchMusics(currentPage, sortOrder, true);
+  }, [onMusicAdded, currentPage, sortOrder, fetchMusics]);
 
   const handleDeleteConfirm = useCallback(async () => {
     if (!musicToDelete) return;
     
     setDeleteLoading(true);
     try {
+      setMusics((prev) => prev.filter(m => m.id !== musicToDelete.id));
+      
+      const cacheKey = getCacheKey(currentPage, sortOrder);
+      if (cachedPages.current[cacheKey]) {
+        cachedPages.current[cacheKey].data = cachedPages.current[cacheKey].data.filter(
+          (m: Music) => m.id !== musicToDelete.id
+        );
+      }
+      
       await musicService.delete(musicToDelete.id);
       
-      setTimeout(() => {
-        setDeleteModalOpen(false);
-        setMusicToDelete(undefined);
-        
-        setTimeout(() => {
-          forceFullUpdate();
-        }, 50);
-      }, 300);
+      if (onMusicAdded) {
+        await onMusicAdded();
+      }
+      
+      setDeleteModalOpen(false);
+      setMusicToDelete(undefined);
     } catch (error) {
       console.error('Erro ao excluir música:', error);
+      await fetchMusics(currentPage, sortOrder, true);
       setDeleteModalOpen(false);
       setMusicToDelete(undefined);
     } finally {
       setDeleteLoading(false);
     }
-  }, [musicToDelete, forceFullUpdate]);
+  }, [musicToDelete, currentPage, sortOrder, getCacheKey, fetchMusics, onMusicAdded]);
 
   const renderedTopMusics = useMemo(() => {
     if (topMusics.length === 0) return null;
     
     return (
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 2,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: { xs: 2, sm: 0 }
-        }}>
-          <Typography 
-            variant="h5" 
-            component="h2" 
-            sx={{ 
-              fontWeight: 'bold', 
-              color: 'text.primary',
-              m: 0
-            }}
-          >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
+          <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: 'text.primary', m: 0 }}>
             Top 5 Músicas Mais Tocadas
           </Typography>
           
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={user?.is_admin ? handleAddMusic : onSuggestMusic}
-              sx={{ 
-                fontWeight: 'bold',
-                px: 3,
-                py: 1,
-                borderRadius: 4
-              }}
-              startIcon={<AddIcon />}
-            >
+            <Button variant="contained" color="primary" onClick={user?.is_admin ? handleAddMusic : onSuggestMusic} sx={{ fontWeight: 'bold', px: 3, py: 1, borderRadius: 4 }} startIcon={<AddIcon />}>
               {user?.is_admin ? "Adicionar Música" : "Sugerir Música"}
             </Button>
           </Box>
         </Box>
         
-        <Box 
-          sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: {
-              xs: 'repeat(1, 1fr)',  
-              sm: 'repeat(2, 1fr)',  
-              md: 'repeat(3, 1fr)',  
-              lg: 'repeat(5, 1fr)'   
-            }, 
-            gap: { xs: 1, sm: 1 },
-            width: '100%',
-            overflow: 'visible',  
-            pb: 2   
-          }}
-        >
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' }, gap: { xs: 1, sm: 1 }, width: '100%', overflow: 'visible', pb: 2 }}>
           {topMusics.map((music, index) => (
-            <Box key={music.id} sx={{ 
-              height: '100%', 
-              width: '100%',
-              overflow: 'visible'  
-            }}>
-              <MusicCard 
-                music={music} 
-                position={index + 1} 
-                highlighted={true}
-                onEdit={handleEditMusic}
-                onDelete={handleDeleteMusic}
-              />
+            <Box key={music.id} sx={{ height: '100%', width: '100%', overflow: 'visible' }}>
+              <MusicCard music={music} position={index + 1} highlighted={true} onEdit={handleEditMusic} onDelete={handleDeleteMusic} />
             </Box>
           ))}
         </Box>
@@ -479,33 +219,8 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     
     if (isMobile) {
       return (
-        <Box 
-          display="flex" 
-          justifyContent="space-between" 
-          alignItems="center"
-          mt={3} 
-          mb={2}
-          px={2}
-        >
-          <Button
-            variant="outlined"
-            disabled={!hasPrevPage}
-            onClick={(e) => handlePageChange(e, currentPage - 1)}
-            sx={{ 
-              minWidth: '40px',
-              width: '40px', 
-              height: '40px',
-              borderRadius: '8px',
-              padding: 0,
-              color: 'primary.main',
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+        <Box display="flex" justifyContent="space-between" alignItems="center" mt={3} mb={2} px={2}>
+          <Button variant="outlined" disabled={!hasPrevPage} onClick={(e) => handlePageChange(e, currentPage - 1)} sx={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '8px', padding: 0, color: 'primary.main', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <NavigateBeforeIcon fontSize="small" />
           </Button>
           
@@ -513,25 +228,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
             Página {currentPage} de {totalPages}
           </Typography>
           
-          <Button
-            variant="outlined"
-            disabled={!hasNextPage}
-            onClick={(e) => handlePageChange(e, currentPage + 1)}
-            sx={{ 
-              minWidth: '40px',
-              width: '40px', 
-              height: '40px',
-              borderRadius: '8px',
-              padding: 0,
-              color: 'primary.main',
-              bgcolor: 'background.paper',
-              border: '1px solid',
-              borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
+          <Button variant="outlined" disabled={!hasNextPage} onClick={(e) => handlePageChange(e, currentPage + 1)} sx={{ minWidth: '40px', width: '40px', height: '40px', borderRadius: '8px', padding: 0, color: 'primary.main', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <NavigateNextIcon fontSize="small" />
           </Button>
         </Box>
@@ -541,21 +238,7 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
     const buttons = [];
     
     buttons.push(
-      <Button
-        key="prev"
-        disabled={!hasPrevPage}
-        onClick={(e) => handlePageChange(e, currentPage - 1)}
-        sx={{ 
-          minWidth: '40px', 
-          mx: 0.5, 
-          borderRadius: '8px',
-          height: '36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '6px 12px'
-        }}
-      >
+      <Button key="prev" disabled={!hasPrevPage} onClick={(e) => handlePageChange(e, currentPage - 1)} sx={{ minWidth: '40px', mx: 0.5, borderRadius: '8px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px' }}>
         <NavigateBeforeIcon fontSize="small" sx={{ display: 'block' }} />
       </Button>
     );
@@ -564,55 +247,14 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
       const isCurrentPage = pageNum === currentPage;
       
       buttons.push(
-        <Button
-          key={pageNum}
-          variant={isCurrentPage ? 'contained' : 'outlined'}
-          color="primary"
-          onClick={(e) => handlePageChange(e, pageNum)}
-          sx={{ 
-            minWidth: '40px', 
-            mx: 0.5, 
-            borderRadius: '8px',
-            height: '36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '6px 12px',
-            lineHeight: 1,
-            fontWeight: isCurrentPage ? 'bold' : 'normal',
-            backgroundColor: isCurrentPage ? 'primary.main !important' : 'transparent',
-            color: isCurrentPage ? 'white !important' : 'primary.main',
-            border: isCurrentPage ? '2px solid primary.dark' : undefined,
-            boxShadow: isCurrentPage ? '0 0 5px rgba(0,0,0,0.3)' : 'none',
-            transform: isCurrentPage ? 'scale(1.1)' : 'scale(1)',
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              backgroundColor: isCurrentPage ? 'primary.dark !important' : undefined,
-              color: isCurrentPage ? 'white !important' : undefined,
-            }
-          }}
-        >
+        <Button key={pageNum} variant={isCurrentPage ? 'contained' : 'outlined'} color="primary" onClick={(e) => handlePageChange(e, pageNum)} sx={{ minWidth: '40px', mx: 0.5, borderRadius: '8px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px', lineHeight: 1, fontWeight: isCurrentPage ? 'bold' : 'normal', backgroundColor: isCurrentPage ? 'primary.main !important' : 'transparent', color: isCurrentPage ? 'white !important' : 'primary.main', border: isCurrentPage ? '2px solid primary.dark' : undefined, boxShadow: isCurrentPage ? '0 0 5px rgba(0,0,0,0.3)' : 'none', transform: isCurrentPage ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.2s ease', '&:hover': { backgroundColor: isCurrentPage ? 'primary.dark !important' : undefined, color: isCurrentPage ? 'white !important' : undefined } }}>
           {pageNum}
         </Button>
       );
     }
     
     buttons.push(
-      <Button
-        key="next"
-        disabled={!hasNextPage}
-        onClick={(e) => handlePageChange(e, currentPage + 1)}
-        sx={{ 
-          minWidth: '40px', 
-          mx: 0.5, 
-          borderRadius: '8px',
-          height: '36px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '6px 12px'
-        }}
-      >
+      <Button key="next" disabled={!hasNextPage} onClick={(e) => handlePageChange(e, currentPage + 1)} sx={{ minWidth: '40px', mx: 0.5, borderRadius: '8px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '6px 12px' }}>
         <NavigateNextIcon fontSize="small" sx={{ display: 'block' }} />
       </Button>
     );
@@ -633,104 +275,38 @@ const MusicList = ({ topMusics, onSuggestMusic, onMusicAdded, skipLoading = fals
   }, []);
 
   return (
-    <Box 
-      sx={{ 
-        width: '100%',
-        position: 'relative',
-      }} 
-      ref={musicContainerRef}
-    >
+    <Box sx={{ width: '100%', position: 'relative' }}>
       {renderedTopMusics}
 
       <Divider sx={{ my: 3 }} />
 
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        flexDirection: { xs: 'column', sm: 'row' },
-        gap: { xs: 2, sm: 0 },
-        mb: 2
-      }}>
-        <Typography 
-          variant="h5" 
-          component="h2" 
-          id="outras-musicas-title"
-          sx={{ 
-            fontWeight: 'bold',
-            color: 'text.primary'
-          }}
-        >
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 }, mb: 2 }}>
+        <Typography variant="h5" component="h2" id="outras-musicas-title" sx={{ fontWeight: 'bold', color: 'text.primary' }}>
           Outras Músicas
         </Typography>
         
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel id="sort-order-label">Ordenar por</InputLabel>
-          <Select
-            labelId="sort-order-label"
-            value={sortOrder}
-            label="Ordenar por"
-            onChange={handleSortChange}
-          >
+          <Select labelId="sort-order-label" value={sortOrder} label="Ordenar por" onChange={handleSortChange}>
             <MenuItem value="desc">Maior para menor</MenuItem>
             <MenuItem value="asc">Menor para maior</MenuItem>
           </Select>
         </FormControl>
       </Box>
       
-      <Box 
-        sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: {
-            xs: 'repeat(1, 1fr)',  
-            sm: 'repeat(2, 1fr)',  
-            md: 'repeat(3, 1fr)',  
-            lg: 'repeat(5, 1fr)'   
-          }, 
-          gap: { xs: 1, sm: 1 },
-          pb: 3,
-          width: '100%',
-          overflow: 'visible',  
-          minHeight: '300px'
-        }}
-      >
-        {loading ? (
-          renderSkeletons
-        ) : musics.length > 0 ? (
-          musics.map((music) => (
-            <Box key={music.id} sx={{ 
-              height: '100%',
-              overflow: 'visible'  
-            }}>
-              <MusicCard 
-                music={music} 
-                position={0} 
-                onEdit={handleEditMusic}
-                onDelete={handleDeleteMusic}
-              />
-            </Box>
-          ))
-        ) : (
-          renderSkeletons
-        )}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' }, gap: { xs: 1, sm: 1 }, pb: 3, width: '100%', overflow: 'visible', minHeight: '300px' }}>
+        {(loading && !skipLoading) ? renderSkeletons : musics.length > 0 ? musics.map((music) => (
+          <Box key={music.id} sx={{ height: '100%', overflow: 'visible' }}>
+            <MusicCard music={music} position={0} onEdit={handleEditMusic} onDelete={handleDeleteMusic} />
+          </Box>
+        )) : renderSkeletons}
       </Box>
       
       {renderPagination}
 
-      <MusicFormModal 
-        open={modalOpen}
-        onClose={handleModalClose}
-        music={selectedMusic}
-        onSave={handleMusicSaved}
-      />
+      <MusicFormModal open={modalOpen} onClose={handleModalClose} music={selectedMusic} onSave={handleMusicSaved} />
       
-      <DeleteConfirmationModal 
-        open={deleteModalOpen}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-        loading={deleteLoading}
-        itemName={musicToDelete?.title || ''}
-      />
+      <DeleteConfirmationModal open={deleteModalOpen} onConfirm={handleDeleteConfirm} onCancel={handleDeleteCancel} loading={deleteLoading} itemName={musicToDelete?.title || ''} />
     </Box>
   );
 };

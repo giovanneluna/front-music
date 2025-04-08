@@ -136,9 +136,13 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
       setYoutubeUrl('');
       setPreview(null);
       
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error suggesting music:', err);
-      setError('Não foi possível enviar sua sugestão. Por favor, tente novamente mais tarde.');
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Não foi possível enviar sua sugestão. Por favor, tente novamente mais tarde.');
+      }
     } finally {
       setLoading(false);
     }

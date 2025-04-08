@@ -135,7 +135,7 @@ function SuggestionForm({ open, onClose }: SuggestionFormProps) {
           onClose();
         }, 2000);
       } else {
-        setSubmitError('Não foi possível enviar a sugestão');
+        setSubmitError(response.message || 'Não foi possível enviar a sugestão');
       }
     } catch (err: any) {
       setSubmitError(err.message || 'Erro ao enviar sugestão');

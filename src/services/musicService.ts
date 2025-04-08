@@ -192,7 +192,7 @@ export const suggestMusic = async (data: {
   try {
     const response = await api.post("/suggestions", data)
     return response.data
-  } catch (error) {
+  } catch (error: any) {
     throw error
   }
 }
